@@ -211,7 +211,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 </div>
 <div class="rsec">
 <h3>💬 对话</h3>
-<div class="rrow"><span class="rl">每轮</span><span class="rv">每人2次机会</span></div>
+<div class="rrow"><span class="rl">每轮</span><span class="rv">每人3次机会</span></div>
 <div class="rrow"><span class="rl">私聊</span><span class="rv">消耗1次 · 头上显示对话气泡</span></div>
 <div class="rrow"><span class="rl">公开</span><span class="rv">消耗2次 · 显示喇叭图标</span></div>
 </div>
@@ -282,7 +282,7 @@ let roundDeaths=[]; // [{idx,name,order}]
 let allScores=[]; // cumulative scores across3 games
 let bubbles=[]; // active speech bubbles
 
-function mkP(i){return{...PD[i],idx:i,alive:true,ch:2,mo:false,sc:0,cc:CC[i],cn:CN[i],msg:'',lastBubble:''}}
+function mkP(i){return{...PD[i],idx:i,alive:true,ch:2,mo:false,sc:0,cc:CC[i],cn:CN[i],msg:'',lastBubble:'',knownColors:[],heardFrom:[]}}
 function initS(){S=[];for(let i=0;i<7;i++)S.push(mkP(i))}
 function shuf(a){for(let k=a.length-1;k>0;k--){let j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]]}return a}
 function pk(a){return a[Math.floor(Math.random()*a.length)]}
@@ -346,7 +346,7 @@ function layoutSeats(){
       '<div class="seat-name" style="color:'+p.color+'">'+p.name+'</div>'+
       '<div class="seat-collar"><div class="seat-collar-dot" style="background:'+p.cc+'"></div>'+p.cn+'色项圈</div>'+
       '<div class="seat-score">⭐ '+p.sc+'分</div>'+
-      (p.alive?'<div class="seat-chance">💬 '+p.ch+'/2</div>':'')+
+      (p.alive?'<div class="seat-chance">💬 '+p.ch+'/3</div>':'')+
       (p.msg&&!p.alive?'':'');
 
     d.style.left=(x-65)+'px';
@@ -421,67 +421,64 @@ function resume(){if(pf){let f=pf;pf=null;f()}}
 // ============ SMARTER AI ============
 function genPriv(s,t){
   let data=PD[s.idx];
-  // Good players actively exchange collar info
+  // Good players: actively exchange collar info to survive
   if(!s.mo){
-    // Strategy 1: Ask target to tell me MY collar color
-    if(Math.random()<0.45){
-      return pk(['我的项圈是什么颜色？告诉我','帮我看看我的项圈颜色','你能看到我的项圈吗？我看不到自己的','我需要知道我的项圈颜色，你说实话']);
+    // 70% chance: share collar info (critical for survival)
+    if(Math.random()<0.35){
+      // Tell target THEIR collar color
+      return pk(['我看到你的项圈是'+t.cn+'色','你的项圈是'+t.cn+'色，记住','我告诉你：你是'+t.cn+'色项圈']);
     }
-    // Strategy 2: Tell target THEIR collar color (build trust)
-    if(Math.random()<0.4){
-      return pk(['我看到你的项圈是'+t.cn+'色','你的项圈我看到了，是'+t.cn+'色','我告诉你：你是'+t.cn+'色项圈，你告诉我我的','你的项圈颜色是'+t.cn+'，现在该你了']);
+    if(Math.random()<0.35){
+      // Ask target to tell ME my collar color
+      return pk(['我的项圈是什么颜色？告诉我','帮我看看我的项圈','你能看到我的项圈吗？我看不到自己的']);
     }
-    // Strategy 3: General suspicion
-    if(data.in>80&&Math.random()<0.3){
-      let suspect=pk(alv().filter(p=>p.idx!==s.idx&&p.idx!==t.idx));
-      return pk(['我怀疑'+suspect.short+'是内鬼','你觉得'+suspect.short+'可疑吗？','我注意到有人行为不对劲']);
+    // 20%: exchange both ways
+    if(Math.random()<0.5){
+      return pk(['你是'+t.cn+'色，我是什么色？','互报：你是'+t.cn+'色，告诉我我的','我先说你是'+t.cn+'色，现在你说我的']);
     }
-    // Strategy 4: Alliance
-    if(data.co>70&&Math.random()<0.3){
-      return pk(['我们互保吧，你先说我的颜色','合作吧，互相确认项圈','我信任你，先给你我的信息']);
-    }
-    return pk(['谁最可疑？','你有什么线索？','有人在说谎','别急着下结论','我觉得有人在伪装']);
+    // 10%: suspicion
+    let suspect=pk(alv().filter(p=>p.idx!==s.idx&&p.idx!==t.idx));
+    return pk(['我怀疑'+suspect.short+'是内鬼','你觉得'+suspect.short+'可疑吗？','有人在说谎，小心']);
   }
-  // Mole: deflect, lie about colors, build false alliances
-  if(Math.random()<0.4){
-    // Mole LIES about someone's color to create confusion
+  // Mole: 50% lie about colors, 30% truth to build trust, 20% deflect
+  if(Math.random()<0.5){
+    // Mole LIES: tell target a wrong color for someone else
     let victim=pk(alv().filter(p=>p.idx!==s.idx&&p.idx!==t.idx));
     let fakeColors=CN.filter(c=>c!==victim.cn);
     let fakeColor=pk(fakeColors);
-    return pk(['我看到'+victim.short+'的项圈是'+fakeColor+'色',''+victim.short+'在说谎，他的项圈是'+fakeColor+'色','我们应该小心'+victim.short+'，他项圈是'+fakeColor+'色']);
+    return pk(['我看到'+victim.short+'的项圈是'+fakeColor+'色',''+victim.short+'在说谎，他是'+fakeColor+'色']);
   }
-  if(Math.random()<0.3){
-    // Mole truthfully tells target their color (to build trust)
-    return pk(['我看到你的项圈是'+t.cn+'色，是真的','你的项圈是'+t.cn+'色，我告诉你','我信任你，你看到我的项圈了吗？互保吧']);
+  if(Math.random()<0.6){
+    // Mole truthfully tells target their color (build trust)
+    return pk(['你的项圈是'+t.cn+'色，我告诉你','我看到你的项圈是'+t.cn+'色']);
   }
-  return pk(['你看到我的项圈了吗？互保吧','我信任你','先观察一轮','有人在说谎','别急着下结论','我觉得'+pk(alv().filter(p=>p.idx!==s.idx&&p.idx!==t.idx)).short+'可疑']);
+  return pk(['你看到我的项圈了吗？互保吧','我信任你','先观察一轮','别急着下结论']);
 }
 
 function genPub(s){
   let data=PD[s.idx];
   if(s.mo){
-    // Mole: deflect, misdirect
     if(data.cu>80&&Math.random()<0.4){
       let t=pk(alv().filter(p=>p.idx!==s.idx));
       let fakeColors=CN.filter(c=>c!==t.cn);
       return '我强烈怀疑'+t.short+'，他项圈是'+pk(fakeColors)+'色！';
     }
-    return pk(['大家冷静分析','不要互相猜疑','有人在混淆视听','我们应该团结','谁敢互报项圈？','我看到可疑行为']);
+    return pk(['大家冷静分析','不要互相猜疑','有人在混淆视听','我们应该团结']);
   }
-  // Good: share info, call out suspects
-  if(Math.random()<0.35){
-    // Share someone's observed color
+  // Good: 60% share collar info publicly
+  if(Math.random()<0.3){
     let t=pk(alv().filter(p=>p.idx!==s.idx));
     return '我看到'+t.short+'的项圈是'+t.cn+'色，大家注意';
   }
-  if(data.in>80&&Math.random()<0.3){
+  if(Math.random()<0.3){
+    // Ask publicly for someone to tell my color
+    return '谁能看到我的项圈颜色？告诉我一下，我看不到自己的';
+  }
+  if(data.in>80&&Math.random()<0.25){
     let t=pk(alv().filter(p=>p.idx!==s.idx));
-    return '我注意到'+t.short+'的发言有矛盾，请大家注意';
+    return '我注意到'+t.short+'的发言有矛盾';
   }
-  if(data.co>75&&Math.random()<0.25){
-    return '我是好人，谁愿意互报项圈颜色？';
-  }
-  return pk(['我是好人，愿意分享信息','有人敢公开项圈吗？','大家有没有线索？','我们需要更多信息','我觉得有人在说谎','希望好人能赢']);
+  return pk(['我是好人，愿意分享信息','有人敢公开项圈吗？','大家有没有线索？','我们需要更多信息']);
 }
 
 // ============ GAME ============
@@ -512,7 +509,7 @@ async function gameLoop(){
   while(running&&!gameOver){
     roundNum++;
     deathOrder=0;roundDeaths=[];
-    for(let p of alv())p.ch=2;
+    for(let p of alv())p.ch=3;
     for(let p of S)p.msg='';
 
     log('═══════════════════','l-sys');
@@ -572,6 +569,36 @@ async function dialoguePhase(){
         let msg=genPriv(p,t);p.msg='[私聊→'+t.short+']';
         showBubble(p.idx,msg,'private',t.short);
         log('🔒 '+p.short+' → '+t.short+'[私聊]: '+msg,'l-priv');
+        // Store color info: if message contains a color for the target, target learns their color
+        if(!p.mo){
+          // Good player told target their color
+          for(let c of CN){
+            if(msg.includes(t.cn)&&msg.includes(c)&&c===t.cn){
+              if(!t.knownColors.includes(c))t.knownColors.push(c);
+              if(!t.heardFrom.includes(p.short))t.heardFrom.push(p.short);
+            }
+          }
+        } else {
+          // Mole may lie: tell target wrong color
+          for(let c of CN){
+            if(msg.includes(c)&&c!==t.cn&&Math.random()<0.5){
+              // Mole lied - don't add correct color
+              break;
+            }
+            if(msg.includes(t.cn)&&c===t.cn){
+              if(Math.random()<0.7){t.knownColors.push(c);if(!t.heardFrom.includes(p.short))t.heardFrom.push(p.short)}
+            }
+          }
+        }
+        // Also: if target tells THIS player their color, this player learns it
+        if(!t.mo){
+          for(let c of CN){
+            if(msg.includes(p.cn)&&c===p.cn){
+              if(!p.knownColors.includes(c))p.knownColors.push(c);
+              if(!p.heardFrom.includes(t.short))p.heardFrom.push(t.short);
+            }
+          }
+        }
         await wait();updateUI();
         clearBubble(p.idx);
       } else break;
@@ -593,34 +620,22 @@ async function votePhase(){
     if(p.mo){
       guess=p.cn;
     } else {
-      // Smart deduction: collect ALL mentions of this player's color from dialogue
-      let myColorMentions=[];
-      for(let o of S){
-        if(o.idx===p.idx)continue;
-        // Check if anyone told this player their color
-        // (Look at all messages that mention this player)
-        let allText=o.msg||'';
-        // Also check private chat info stored
-        // For simplicity: scan all alive players' last messages for mentions of this player's name + color
-        for(let c of CN){
-          if(allText.includes(p.short)&&allText.includes(c)){
-            myColorMentions.push(c);
-          }
-        }
-      }
+      // Use stored color info from dialogue
       let data=PD[p.idx];
-      let insightBonus=data.in/100*0.4;
-      // If multiple people said the same color, trust it
-      if(myColorMentions.length>=2){
-        // Majority vote on color
+      if(p.knownColors.length>0){
+        // Trust the color we were told (majority if multiple)
         let colorCount={};
-        for(let c of myColorMentions)colorCount[c]=(colorCount[c]||0)+1;
-        let best=Object.entries(colorCount).sort((a,b)=>b[1]-a[1])[0][0];
-        guess=best;
-      } else if(myColorMentions.length===1&&Math.random()<0.6+insightBonus){
-        guess=myColorMentions[0];
+        for(let c of p.knownColors)colorCount[c]=(colorCount[c]||0)+1;
+        let sorted=Object.entries(colorCount).sort((a,b)=>b[1]-a[1]);
+        let trustLevel=0.5+p.heardFrom.length*0.15; // more sources = more trust
+        if(data.in>80)trustLevel+=0.1;
+        if(sorted[0][1]>=2||Math.random()<trustLevel){
+          guess=sorted[0][0];
+        } else {
+          guess=pk(CN);
+        }
       } else {
-        // Fallback: random guess (1/7 chance)
+        // No info: random guess (1/7)
         guess=pk(CN);
       }
     }
@@ -673,97 +688,116 @@ async function votePhase(){
 
 async function trialPhase(){
   phase='trial';updateUI();
-  if(isUlt||alvn()<=2)return; // no trial in ultimate or too few
-  log('♥♥♥ 红心审判阶段 · 可发动','l-sys');
+  if(isUlt||alvn()<=2)return;
+  log('♥♥♥ 红心审判 · 指控内鬼','l-sys');
   
-  // AI decides whether to call for trial
+  // Step1: Someone accuses a specific player
   let al=shuf([...alv()]);
-  let caller=null;
+  let caller=null,accused=null;
   for(let p of al){
     if(!running||gameOver)return;
     let data=PD[p.idx];
     if(p.mo){
-      // Mole rarely calls trial, only to deflect
-      if(Math.random()<0.12&&alvn()<=4){caller=p;break}
+      // Mole rarely accuses, only to deflect when few people left
+      if(Math.random()<0.1&&alvn()<=4){
+        let target=pk(alv().filter(t=>!t.mo&&t.idx!==p.idx));
+        caller=p;accused=target;break;
+      }
     } else {
-      // Good player: more likely if high guts or insight
-      let chance=0.15;
-      if(data.g>75)chance+=0.15;
+      // Good player: accuse based on guts + insight
+      let chance=0.18;
+      if(data.g>75)chance+=0.12;
       if(data.in>80)chance+=0.1;
-      if(alvn()<=5)chance+=0.1;
-      if(ndStreak>=2)chance+=0.15; // more urgent if close to losing
-      if(Math.random()<chance){caller=p;break}
-    }
-  }
-  
-  if(!caller){log('无人发动红心审判','l-sys');return}
-  
-  log('♥ '+caller.short+' 发动红心审判!','l-kill');
-  
-  // AI votes: try to identify the mole
-  let votes={};
-  let voters=[];
-  for(let p of alv()){
-    if(!running||gameOver)return;
-    await wait();
-    // Decide who to suspect
-    let target=null;
-    if(p.mo){
-      // Mole votes for a random good player
-      let goods=alv().filter(t=>!t.mo&&t.idx!==p.idx);
-      target=goods.length?pk(goods):pk(alv().filter(t=>t.idx!==p.idx));
-    } else {
-      // Good player: use insight + personality to guess
-      let data=PD[p.idx];
-      let suspects=alv().filter(t=>t.idx!==p.idx);
-      // Higher insight = smarter guess
-      if(data.in>80&&Math.random()<0.5){
-        // Try to pick the mole based on behavior patterns
-        // (simplified: just pick randomly, but with slight bias toward mole)
-        target=pk(suspects);
-      } else {
-        target=pk(suspects);
+      if(alvn()<=5)chance+=0.08;
+      if(ndStreak>=2)chance+=0.12;
+      if(Math.random()<chance){
+        let suspects=alv().filter(t=>t.idx!==p.idx);
+        // Smart accusation: higher insight = better target selection
+        let target;
+        if(data.in>80&&Math.random()<0.4){
+          // Try to pick mole (simplified: random among suspects)
+          target=pk(suspects);
+        } else {
+          target=pk(suspects);
+        }
+        caller=p;accused=target;break;
       }
     }
-    if(target){
-      votes[target.idx]=(votes[target.idx]||0)+1;
-      voters.push(p);
-      log('🗳 '+p.short+' 投票: '+target.short,'l-vote');
+  }
+  
+  if(!caller||!accused){log('无人发动红心审判','l-sys');return}
+  
+  log('♥ '+caller.short+' 指控 '+accused.short+' 是内鬼!','l-kill');
+  
+  // Step2: Other players vote to follow or not
+  let followVotes=0,followers=[];
+  let nonFollowers=[];
+  for(let p of alv()){
+    if(!running||gameOver)return;
+    if(p.idx===caller.idx)continue; // caller already voted
+    await wait();
+    
+    let willFollow=false;
+    if(p.mo){
+      // Mole: follow if accused is NOT the mole (to blend in)
+      // Don't follow if accused IS the mole (would expose self)
+      willFollow=!accused.mo&&Math.random()<0.6;
+    } else {
+      // Good player: follow if they suspect the accused
+      let data=PD[p.idx];
+      let susChance=0.3;
+      if(data.in>80)susChance+=0.2;
+      if(data.g>75)susChance+=0.1;
+      // If multiple people already followed, more likely to follow (bandwagon)
+      if(followVotes>=2)susChance+=0.2;
+      willFollow=Math.random()<susChance;
+    }
+    
+    if(willFollow){
+      followVotes++;
+      followers.push(p);
+      log('👍 '+p.short+' 支持指控','l-vote');
+    } else {
+      nonFollowers.push(p);
+      log('👎 '+p.short+' 不支持','l-vote');
     }
   }
   
-  // Count votes
-  let maxV=0,winnerIdx=-1,tie=false;
-  for(let idx in votes){
-    if(votes[idx]>maxV){maxV=votes[idx];winnerIdx=parseInt(idx);tie=false}
-    else if(votes[idx]===maxV)tie=true;
-  }
-  
+  // Count: caller + followers need >= half of alive players
+  let totalVotes=1+followVotes; // caller counts as 1
   let majority=Math.ceil(alv().length/2);
   
-  if(tie||maxV===0||maxV<majority){
-    log('审判失败 · 票数不足或平局('+maxV+'/'+alv().length+')','l-sys');
+  log('投票结果: '+totalVotes+'/'+alv().length+' 支持 (需要'+majority+')','l-sys');
+  
+  if(totalVotes<majority){
+    log('审判失败 · 票数不足','l-sys');
     return;
   }
   
-  // Trial passes! Check if voted target is the mole
-  let target=S[winnerIdx];
-  if(target&&target.mo){
-    log('🎉🎉🎉 猜对了! '+target.short+' 就是内鬼!','l-win');
+  // Trial passes! Check if accused is the mole
+  if(accused.mo){
+    log('🎉🎉🎉 猜对了! '+accused.short+' 就是内鬼!','l-win');
+    accused.alive=false;
+    updateUI();
     endRound('good');
   } else {
-    log('💀 猜错了! '+target.short+' 不是内鬼!','l-kill');
-    log('参与投票的人全部死亡!','l-kill');
-    for(let v of voters){
+    log('💀 猜错了! '+accused.short+' 不是内鬼!','l-kill');
+    log('参与指控的人全部死亡!','l-kill');
+    // Caller dies
+    if(caller.alive){
+      caller.alive=false;deathOrder++;
+      roundDeaths.push({idx:caller.idx,name:caller.short,order:deathOrder});
+      log('☠️ '+caller.short+' 死亡','l-kill');
+    }
+    // Followers die
+    for(let v of followers){
       if(v.alive){
-        v.alive=false;
-        deathOrder++;
+        v.alive=false;deathOrder++;
         roundDeaths.push({idx:v.idx,name:v.short,order:deathOrder});
         log('☠️ '+v.short+' 死亡','l-kill');
       }
     }
     updateUI();
-    // Check if the wrongly accused also dies? No, only voters die
   }
 }
 
