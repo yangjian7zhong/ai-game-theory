@@ -5,164 +5,181 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI博弈论 · 囚徒困境</title>
 <style>
-:root{--bg:#0a0a12;--card:rgba(15,15,30,.85);--border:rgba(60,60,100,.5);--gold:#e8a838;--red:#ff4757;--blue:#3b5998;--green:#2ed573;--purple:#a855f7;--cyan:#06d6a0;--text:#d0d0e0;--muted:#5a5a7a;--glow:rgba(232,168,56,.3)}
+:root{--bg:#080810;--card:rgba(12,12,28,.9);--border:rgba(50,50,90,.5);--gold:#e8a838;--red:#ff4757;--blue:#3b5998;--green:#2ed573;--purple:#a855f7;--cyan:#06d6a0;--text:#d0d0e0;--muted:#5a5a7a;--glow:rgba(232,168,56,.3)}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden;user-select:none}
 @keyframes fadeIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
-@keyframes pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.3)}}
-@keyframes glow{0%,100%{box-shadow:0 0 8px var(--glow)}50%{box-shadow:0 0 20px var(--glow)}}
-@keyframes slideUp{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
-@keyframes explode{0%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.8}100%{transform:scale(0);opacity:0}}
-@keyframes deadPulse{0%,100%{opacity:.15}50%{opacity:.25}}
+@keyframes pulse{0%,100%{box-shadow:0 0 8px var(--glow)}50%{box-shadow:0 0 25px var(--glow)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bubbleIn{from{opacity:0;transform:scale(.8) translateY(5px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes bubbleOut{from{opacity:1}to{opacity:0}}
+@keyframes deadFade{0%,100%{opacity:.15}50%{opacity:.22}}
+@keyframes glowRing{0%,100%{box-shadow:0 0 10px var(--gold)}50%{box-shadow:0 0 30px var(--gold)}}
 
-/* Background texture */
-body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(20,20,50,.8),rgba(5,5,15,1));z-index:0}
-body::after{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.03'/%3E%3C/svg%3E");z-index:0;pointer-events:none}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 45%,rgba(18,18,45,.85),rgba(5,5,12,1));z-index:0}
 
 /* Header */
-.hdr{position:relative;z-index:10;background:linear-gradient(180deg,rgba(15,15,30,.95),rgba(10,10,20,.8));border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;justify-content:space-between}
-.hdr h1{font-size:18px;font-weight:900;color:var(--gold);letter-spacing:2px;text-shadow:0 0 10px rgba(232,168,56,.3)}
-.hdr-info{display:flex;gap:16px;font-size:11px;color:var(--muted)}
-.hdr-info span{display:flex;align-items:center;gap:4px}
-.hdr-info .val{color:var(--gold);font-weight:700;font-family:monospace;font-size:14px}
+.hdr{position:relative;z-index:20;background:linear-gradient(180deg,rgba(12,12,28,.96),rgba(8,8,20,.85));border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;justify-content:space-between}
+.hdr h1{font-size:20px;font-weight:900;color:var(--gold);letter-spacing:3px;text-shadow:0 0 12px rgba(232,168,56,.25)}
+.hdr-stats{display:flex;gap:20px;font-size:13px;color:var(--muted)}
+.hdr-stats span{display:flex;align-items:center;gap:6px}
+.hdr-stats .v{color:var(--gold);font-weight:700;font-family:monospace;font-size:16px}
 
-/* Main layout */
-.layout{position:relative;z-index:5;display:flex;height:calc(100vh - 44px)}
+/* Layout */
+.layout{position:relative;z-index:5;display:flex;height:calc(100vh - 50px)}
 
-/* Arena - circular table */
-.arena{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
-.table-ring{position:relative;width:min(70vh,70vw);height:min(70vh,70vw)}
+/* Arena */
+.arena{flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.table-ring{position:relative;width:min(80vh,75vw);height:min(80vh,75vw);min-width:500px;min-height:500px}
 
-/* Center info */
-.center-info{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(20,20,50,.9),rgba(10,10,25,.95));border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10}
-.center-info .round-num{font-size:32px;font-weight:900;color:var(--gold);font-family:monospace;line-height:1}
-.center-info .round-label{font-size:10px;color:var(--muted);margin-top:2px}
-.center-info .death-count{font-size:12px;color:var(--red);margin-top:6px}
-.center-info .streak{font-size:11px;color:var(--cyan);margin-top:2px}
+/* Center */
+.center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,rgba(18,18,42,.95),rgba(8,8,22,.98));border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:12}
+.center .c-round{font-size:36px;font-weight:900;color:var(--gold);font-family:monospace;line-height:1}
+.center .c-label{font-size:10px;color:var(--muted);letter-spacing:2px;margin-top:2px}
+.center .c-streak{font-size:12px;color:var(--cyan);margin-top:8px}
+.center .c-game{font-size:11px;color:var(--purple);margin-top:2px}
 
-/* Player seats - positioned in a circle */
-.seat{position:absolute;width:120px;text-align:center;transition:all .4s;cursor:pointer;z-index:15}
-.seat:hover{transform:scale(1.08);z-index:20}
-.seat.dead{opacity:.2;filter:grayscale(1) brightness(.5)}
-.seat.dead:hover{opacity:.35;transform:none}
-.seat.dead .seat-avatar{animation:deadPulse 3s infinite}
-.seat.voting .seat-avatar{animation:pulse 1s infinite}
+/* Seats */
+.seat{position:absolute;width:130px;text-align:center;transition:all .35s;cursor:pointer;z-index:15}
+.seat:hover{z-index:25;filter:brightness(1.15)}
+.seat.dead{opacity:.18;filter:grayscale(1) brightness(.4)}
+.seat.dead:hover{opacity:.3;filter:none}
 
-.seat-avatar{width:56px;height:56px;border-radius:50%;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;border:2px solid rgba(255,255,255,.15);position:relative;transition:all .3s}
-.seat:hover .seat-avatar{border-color:var(--gold);box-shadow:0 0 15px var(--glow)}
-.seat.dead .seat-avatar{border-color:rgba(255,255,255,.05)}
+.seat-head{width:62px;height:62px;border-radius:50%;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;border:2.5px solid rgba(255,255,255,.12);position:relative;transition:all .3s}
+.seat:hover .seat-head{border-color:var(--gold);box-shadow:0 0 18px var(--glow)}
+.seat.dead .seat-head{border-color:rgba(255,255,255,.04)}
+.seat.speaking .seat-head{animation:pulse 1.2s infinite}
+.seat.dying .seat-head{border-color:var(--red);box-shadow:0 0 20px rgba(255,71,87,.5)}
 
-.seat-name{font-size:11px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.seat-collar{display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:1px 6px;border-radius:8px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1)}
-.seat-collar-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-.seat-score{font-size:10px;color:var(--gold);font-weight:700;margin-top:2px;font-family:monospace}
-.seat-chat{font-size:8px;color:var(--muted);margin-top:1px}
-.seat-tag{position:absolute;top:-4px;right:-4px;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700;z-index:20}
-.seat-tag.mole{background:var(--red);color:#fff}
-.seat-tag.good{background:var(--green);color:#fff}
-.seat-tag.eliminated{background:rgba(100,100,100,.8);color:#ccc}
+.seat-name{font-size:12px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seat-collar{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.08)}
+.seat-collar-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.seat-score{font-size:11px;color:var(--gold);font-weight:700;margin-top:2px;font-family:monospace}
+.seat-chance{font-size:10px;color:var(--muted);margin-top:1px}
+.seat-tag{position:absolute;top:-5px;right:-5px;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:700;z-index:20;border:1px solid rgba(255,255,255,.15)}
+.tag-mole{background:var(--red);color:#fff}.tag-good{background:var(--green);color:#fff}.tag-out{background:rgba(80,80,80,.9);color:#ccc}
 
-/* Mini radar next to each seat */
-.mini-radar{width:50px;height:50px;margin:2px auto 0}
+/* Speech Bubbles */
+.bubble{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:rgba(15,15,35,.95);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:10px;line-height:1.4;max-width:180px;white-space:normal;text-align:left;animation:bubbleIn .3s;z-index:30;pointer-events:none}
+.bubble::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:rgba(50,50,90,.5)}
+.bubble.bubble-private{border-left:3px solid var(--blue)}
+.bubble.bubble-public{border-left:3px solid var(--purple);font-weight:600}
+.bubble .b-target{color:var(--cyan);font-weight:700;font-size:9px;margin-bottom:2px}
+.bubble .b-icon{color:var(--purple);margin-right:3px}
 
-/* Log panel */
-.log-panel{width:320px;background:rgba(10,10,25,.9);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:10}
-.log-header{padding:8px 12px;border-bottom:1px solid var(--border);font-weight:700;font-size:12px;color:var(--gold);display:flex;justify-content:space-between}
-.log-body{flex:1;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:2px}
-.log-entry{padding:3px 8px;border-radius:4px;font-size:10px;line-height:1.4;border-left:3px solid transparent;animation:slideUp .3s}
-.log-sys{background:rgba(232,168,56,.04);border-left-color:var(--gold);color:var(--gold)}
-.log-priv{background:rgba(59,89,152,.05);border-left-color:var(--blue)}
-.log-pub{background:rgba(168,85,247,.05);border-left-color:var(--purple);font-weight:700}
-.log-vote{background:rgba(6,214,160,.05);border-left-color:var(--cyan)}
-.log-kill{background:rgba(255,71,87,.06);border-left-color:var(--red);color:var(--red);font-weight:700}
-.log-win{background:rgba(46,213,115,.06);border-left-color:var(--green);color:var(--green);font-weight:700}
-.log-ult{background:rgba(232,168,56,.08);border-left-color:var(--gold);color:var(--gold);font-weight:700}
-.log-controls{padding:6px;border-top:1px solid var(--border);display:flex;gap:3px;flex-wrap:wrap}
-.btn{flex:1;min-width:36px;padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:10px;font-weight:700;cursor:pointer;transition:all .2s;text-align:center}
-.btn:hover:not(:disabled){border-color:var(--gold);background:rgba(232,168,56,.1)}
-.btn:disabled{opacity:.2;cursor:not-allowed}
-.btn-go{background:linear-gradient(135deg,rgba(59,89,152,.6),rgba(168,85,247,.6));border-color:var(--blue);color:#fff}
+/* Log Panel */
+.log-panel{width:340px;background:rgba(8,8,22,.95);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:10}
+.log-hdr{padding:10px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;color:var(--gold);display:flex;justify-content:space-between}
+.log-body{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:3px}
+.log-entry{padding:4px 10px;border-radius:5px;font-size:11px;line-height:1.4;border-left:3px solid transparent;animation:slideUp .25s}
+.l-sys{background:rgba(232,168,56,.04);border-left-color:var(--gold);color:var(--gold)}
+.l-priv{background:rgba(59,89,152,.05);border-left-color:var(--blue)}
+.l-pub{background:rgba(168,85,247,.05);border-left-color:var(--purple);font-weight:700}
+.l-vote{background:rgba(6,214,160,.05);border-left-color:var(--cyan)}
+.l-kill{background:rgba(255,71,87,.06);border-left-color:var(--red);color:var(--red);font-weight:700}
+.l-win{background:rgba(46,213,115,.06);border-left-color:var(--green);color:var(--green);font-weight:700}
+.l-ult{background:rgba(232,168,56,.08);border-left-color:var(--gold);color:var(--gold);font-weight:700}
+
+/* Controls - BIG BUTTONS */
+.log-ctrl{padding:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ctrl-btn{padding:14px;border:1.5px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;text-align:center}
+.ctrl-btn:hover:not(:disabled){border-color:var(--gold);background:rgba(232,168,56,.12);transform:scale(1.02)}
+.ctrl-btn:active:not(:disabled){transform:scale(.97)}
+.ctrl-btn:disabled{opacity:.2;cursor:not-allowed}
+.ctrl-go{background:linear-gradient(135deg,rgba(59,89,152,.7),rgba(168,85,247,.7));border-color:var(--blue);color:#fff;font-size:16px;letter-spacing:2px}
+.ctrl-go:hover:not(:disabled){box-shadow:0 0 20px rgba(59,89,152,.4)}
+.ctrl-row2{grid-column:span 2;display:flex;gap:8px}
+.ctrl-row2 .ctrl-btn{flex:1}
 
 /* Overlay */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
-.intro-box{max-width:640px;width:95%;max-height:88vh;overflow-y:auto;background:linear-gradient(180deg,rgba(20,20,45,.98),rgba(10,10,25,.98));border:1px solid var(--border);border-radius:14px;padding:20px;animation:fadeIn .4s}
-.intro-box h2{text-align:center;font-size:20px;color:var(--gold);margin-bottom:12px;letter-spacing:3px}
-.rule-sec{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:6px}
-.rule-sec h3{padding:5px 10px;background:linear-gradient(135deg,rgba(59,89,152,.15),rgba(168,85,247,.15));color:var(--gold);font-size:11px}
-.rule-row{display:flex;justify-content:space-between;padding:4px 10px;border-bottom:1px solid rgba(40,40,80,.3);font-size:10px}
-.rule-row:last-child{border-bottom:none}
-.rule-row .rl{color:var(--muted)}.rule-row .rv{color:var(--text);font-weight:700}
-.start-btn{display:block;width:100%;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border:2px solid var(--gold);padding:10px;font-size:14px;font-weight:900;border-radius:10px;cursor:pointer;letter-spacing:4px;margin-top:10px;transition:all .3s}
-.start-btn:hover{box-shadow:0 0 20px rgba(59,89,152,.5);transform:translateY(-2px)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.intro-box{max-width:660px;width:95%;max-height:90vh;overflow-y:auto;background:linear-gradient(180deg,rgba(16,16,40,.98),rgba(8,8,22,.98));border:1px solid var(--border);border-radius:16px;padding:24px;animation:fadeIn .4s}
+.intro-box h2{text-align:center;font-size:22px;color:var(--gold);margin-bottom:14px;letter-spacing:4px}
+.rsec{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px}
+.rsec h3{padding:6px 12px;background:linear-gradient(135deg,rgba(59,89,152,.12),rgba(168,85,247,.12));color:var(--gold);font-size:12px}
+.rrow{display:flex;justify-content:space-between;padding:5px 12px;border-bottom:1px solid rgba(35,35,70,.3);font-size:11px}
+.rrow:last-child{border-bottom:none}
+.rrow .rl{color:var(--muted)}.rrow .rv{color:var(--text);font-weight:700}
+.go-btn{display:block;width:100%;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border:2px solid var(--gold);padding:14px;font-size:18px;font-weight:900;border-radius:12px;cursor:pointer;letter-spacing:5px;margin-top:12px;transition:all .3s}
+.go-btn:hover{box-shadow:0 0 25px rgba(59,89,152,.5);transform:translateY(-2px)}
 
-/* Result overlay */
-.result-box{max-width:440px;width:95%;text-align:center;background:linear-gradient(180deg,rgba(20,20,45,.98),rgba(10,10,25,.98));border:1px solid var(--gold);border-radius:14px;padding:20px;animation:fadeIn .4s}
-.result-box h2{font-size:18px;margin-bottom:10px}
-.rank-list{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:8px 0;text-align:left}
-.rank-item{display:flex;justify-content:space-between;padding:5px 10px;border-bottom:1px solid rgba(40,40,80,.3);font-size:11px;align-items:center}
-.rank-item:last-child{border-bottom:none}
-.rank-item.first{background:rgba(232,168,56,.06)}
-.rank-name{flex:1;font-weight:700}
-.rank-role{font-size:9px;padding:1px 5px;border-radius:3px;margin-left:6px}
-.restart-btn{background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border:1px solid rgba(255,255,255,.15);padding:6px 20px;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;margin-top:8px;transition:all .3s}
-.restart-btn:hover{transform:translateY(-2px);box-shadow:0 0 12px rgba(59,89,152,.5)}
+/* Result */
+.result-box{max-width:460px;width:95%;text-align:center;background:linear-gradient(180deg,rgba(16,16,40,.98),rgba(8,8,22,.98));border:2px solid var(--gold);border-radius:16px;padding:24px;animation:fadeIn .4s}
+.result-box h2{font-size:20px;margin-bottom:10px}
+.rlist{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:10px 0;text-align:left}
+.ritem{display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid rgba(35,35,70,.3);font-size:12px;align-items:center}
+.ritem:last-child{border-bottom:none}
+.ritem.first{background:rgba(232,168,56,.06)}
+.rname{flex:1;font-weight:700}
+.rrole{font-size:10px;padding:2px 6px;border-radius:3px;margin-left:6px}
+.rbtn{background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border:1px solid rgba(255,255,255,.15);padding:10px 28px;font-size:14px;font-weight:700;border-radius:10px;cursor:pointer;margin-top:10px;transition:all .3s}
+.rbtn:hover{transform:translateY(-2px);box-shadow:0 0 15px rgba(59,89,152,.5)}
 
-/* Radar modal */
-.radar-modal{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:90;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
-.radar-modal.show{display:flex}
-.radar-card{background:linear-gradient(180deg,rgba(20,20,45,.98),rgba(10,10,25,.98));border:1px solid var(--border);border-radius:14px;padding:20px;animation:fadeIn .3s;text-align:center;max-width:400px;width:90%}
-.radar-card h3{font-size:16px;color:var(--gold);margin-bottom:8px}
-.radar-canvas{margin:0 auto}
-.radar-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px}
-.radar-stat{text-align:center}
-.radar-stat .stat-name{font-size:9px;color:var(--muted)}
-.radar-stat .stat-val{font-size:14px;font-weight:900;color:var(--gold)}
+/* Radar Modal */
+.rmod{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:90;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.rmod.show{display:flex}
+.rcard{background:linear-gradient(180deg,rgba(16,16,40,.98),rgba(8,8,22,.98));border:1px solid var(--border);border-radius:14px;padding:24px;animation:fadeIn .3s;text-align:center;max-width:420px;width:92%}
+.rcard h3{font-size:18px;color:var(--gold);margin-bottom:10px}
+.rcard canvas{margin:0 auto;display:block}
+.rstats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.rstat{text-align:center}.rstat .sn{font-size:9px;color:var(--muted)}.rstat .sv{font-size:16px;font-weight:900;color:var(--gold)}
 
-/* Phase banner overlay */
-.phase-banner-overlay{position:fixed;top:50px;left:50%;transform:translateX(-50%);z-index:50;padding:8px 24px;border-radius:8px;font-size:13px;font-weight:700;letter-spacing:2px;animation:fadeIn .3s;pointer-events:none;text-align:center}
-.phase-dialogue{background:rgba(59,89,152,.85);border:1px solid var(--blue);color:#fff}
-.phase-vote{background:rgba(168,85,247,.85);border:1px solid var(--purple);color:#fff}
-.phase-result{background:rgba(232,168,56,.85);border:1px solid var(--gold);color:#000}
-.phase-ult{background:linear-gradient(135deg,rgba(232,168,56,.9),rgba(255,71,87,.8));border:2px solid var(--gold);color:#fff;animation:glow 1.5s infinite}
+/* Phase banner */
+.phase-pop{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:50;padding:10px 30px;border-radius:10px;font-size:15px;font-weight:700;letter-spacing:2px;animation:fadeIn .3s;pointer-events:none;text-align:center}
+.pp-dialogue{background:rgba(59,89,152,.88);border:1px solid var(--blue);color:#fff}
+.pp-vote{background:rgba(168,85,247,.88);border:1px solid var(--purple);color:#fff}
+.pp-result{background:rgba(232,168,56,.88);border:1px solid var(--gold);color:#000}
+.pp-ult{background:linear-gradient(135deg,rgba(232,168,56,.92),rgba(255,71,87,.85));border:2px solid var(--gold);color:#fff;animation:glowRing 1.5s infinite}
 
-::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-@media(max-width:900px){.log-panel{width:100%;height:30vh}.layout{flex-direction:column}.table-ring{width:min(60vw,60vh);height:min(60vw,60vh)}.seat{width:90px}.seat-avatar{width:40px;height:40px;font-size:14px}.center-info{width:100px;height:100px}.center-info .round-num{font-size:22px}}
+/* Game info panel (scoreboard) */
+.scoreboard{position:absolute;top:10px;left:10px;background:rgba(10,10,25,.85);border:1px solid var(--border);border-radius:10px;padding:10px 14px;z-index:18;min-width:160px}
+.sb-title{font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px;letter-spacing:1px}
+.sb-row{display:flex;justify-content:space-between;font-size:10px;padding:2px 0;border-bottom:1px solid rgba(35,35,60,.3)}
+.sb-row:last-child{border-bottom:none}
+.sb-name{color:var(--text)}.sb-pts{color:var(--gold);font-weight:700;font-family:monospace}
+.sb-dead{opacity:.35;text-decoration:line-through}
+
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+@media(max-width:900px){.log-panel{width:100%;height:35vh}.layout{flex-direction:column}.table-ring{min-width:300px;min-height:300px;width:min(70vw,50vh);height:min(70vw,50vh)}.seat{width:100px}.seat-head{width:46px;height:46px;font-size:16px}.center{width:110px;height:110px}.center .c-round{font-size:24px}}
 </style>
 </head>
 <body>
 
 <div class="hdr">
 <h1>⚡ AI博弈论 · 囚徒困境</h1>
-<div class="hdr-info">
-<span>轮次 <span class="val" id="HR">-</span></span>
-<span>存活 <span class="val" id="HA">7</span></span>
-<span>无死亡 <span class="val" id="HN">0/4</span></span>
-<span>模式 <span class="val" id="HM">普通</span></span>
+<div class="hdr-stats">
+<span>局 <span class="v" id="HG">1/3</span></span>
+<span>轮 <span class="v" id="HR">-</span></span>
+<span>存活 <span class="v" id="HA">7</span></span>
+<span>无死亡 <span class="v" id="HN">0/4</span></span>
 </div>
 </div>
 
 <div class="layout">
 <div class="arena">
 <div class="table-ring" id="RING">
-<div class="center-info">
-<div class="round-num" id="CRNUM">-</div>
-<div class="round-label">ROUND</div>
-<div class="death-count" id="CDEATH"></div>
-<div class="streak" id="CSTREAK"></div>
+<div class="center">
+<div class="c-round" id="CRN">-</div>
+<div class="c-label">ROUND</div>
+<div class="c-streak" id="CSTK"></div>
+<div class="c-game" id="CGME"></div>
 </div>
 </div>
-<div class="phase-banner-overlay" id="PHBANNER" style="display:none"></div>
+<div class="scoreboard" id="SBOARD"></div>
+<div class="phase-pop" id="PHB" style="display:none"></div>
 </div>
 
 <div class="log-panel">
-<div class="log-header"><span>📋 日志</span><span id="LCNT" style="font-size:9px;color:var(--muted)">0</span></div>
+<div class="log-hdr"><span>📋 实时日志</span><span id="LCNT" style="font-size:10px;color:var(--muted)">0</span></div>
 <div class="log-body" id="LBOX"></div>
-<div class="log-controls">
-<button class="btn btn-go" id="BST" onclick="startGame()">⚡ 开始</button>
-<button class="btn" id="BSP" onclick="spdChg(1)" disabled>⏩</button>
-<button class="btn" id="BSL" onclick="spdChg(-1)" disabled>⏪</button>
-<button class="btn" id="BPT" onclick="doPause()" disabled>⏸</button>
-<button class="btn" onclick="doReset()">🔄</button>
+<div class="log-ctrl">
+<button class="ctrl-btn ctrl-go" id="BST" onclick="startGame()">⚡ 开始游戏</button>
+<button class="ctrl-btn" id="BPT" onclick="doPause()" disabled>⏸ 暂停</button>
+<div class="ctrl-row2">
+<button class="ctrl-btn" id="BSP" onclick="spdChg(1)" disabled>⏩ 加速</button>
+<button class="ctrl-btn" id="BSL" onclick="spdChg(-1)" disabled>⏪ 减速</button>
+</div>
+<button class="ctrl-btn" onclick="doReset()">🔄 重置</button>
 </div>
 </div>
 </div>
@@ -171,40 +188,40 @@ body::after{content:'';position:fixed;inset:0;background:url("data:image/svg+xml
 <div id="IOVL" class="overlay">
 <div class="intro-box">
 <h2>⚡ AI博弈论 · 囚徒困境</h2>
-<div class="rule-sec">
-<h3>🎭 选手阵容</h3>
-<div class="rule-row"><span class="rl">ChatGPT-5.6</span><span class="rv">胆魄78 狡诈85 合作52 洞悉90 说服82</span></div>
-<div class="rule-row"><span class="rl">Claude-Fable5</span><span class="rv">胆魄65 狡诈60 合作88 洞悉75 说服70</span></div>
-<div class="rule-row"><span class="rl">deepseek-v4-pro</span><span class="rv">胆魄72 狡诈80 合作68 洞悉85 说服65</span></div>
-<div class="rule-row"><span class="rl">GLM-5.3</span><span class="rv">胆魄82 狡诈90 合作45 洞悉70 说服88</span></div>
-<div class="rule-row"><span class="rl">Qwen3.8max</span><span class="rv">胆魄60 狡诈55 合作85 洞悉80 说服75</span></div>
-<div class="rule-row"><span class="rl">豆包2.0</span><span class="rv">胆魄70 狡诈65 合作80 洞悉68 说服62</span></div>
-<div class="rule-row"><span class="rl">Grok4.6</span><span class="rv">胆魄88 狡诈75 合作50 洞悉72 说服80</span></div>
+<div class="rsec">
+<h3>🎭 选手 · 五维属性</h3>
+<div class="rrow"><span class="rl">ChatGPT-5.6</span><span class="rv">胆魄78 狡诈85 合作52 洞悉90 说服82</span></div>
+<div class="rrow"><span class="rl">Claude-Fable5</span><span class="rv">胆魄65 狡诈60 合作88 洞悉75 说服70</span></div>
+<div class="rrow"><span class="rl">deepseek-v4-pro</span><span class="rv">胆魄72 狡诈80 合作68 洞悉85 说服65</span></div>
+<div class="rrow"><span class="rl">GLM-5.3</span><span class="rv">胆魄82 狡诈90 合作45 洞悉70 说服88</span></div>
+<div class="rrow"><span class="rl">Qwen3.8max</span><span class="rv">胆魄60 狡诈55 合作85 洞悉80 说服75</span></div>
+<div class="rrow"><span class="rl">豆包2.0</span><span class="rv">胆魄70 狡诈65 合作80 洞悉68 说服62</span></div>
+<div class="rrow"><span class="rl">Grok4.6</span><span class="rv">胆魄88 狡诈75 合作50 洞悉72 说服80</span></div>
 </div>
-<div class="rule-sec">
+<div class="rsec">
 <h3>🎯 项圈系统</h3>
-<div class="rule-row"><span class="rl">普通人</span><span class="rv">能看到别人的项圈颜色，<b>看不到自己的</b></span></div>
-<div class="rule-row"><span class="rl">内鬼</span><span class="rv">能看到<b>所有人</b>的项圈颜色（含自己的）</span></div>
+<div class="rrow"><span class="rl">普通人</span><span class="rv">能看到别人的项圈，<b>看不到自己的</b></span></div>
+<div class="rrow"><span class="rl">内鬼</span><span class="rv">能看到<b>所有人的</b>项圈（含自己的）</span></div>
 </div>
-<div class="rule-sec">
+<div class="rsec">
 <h3>💬 对话</h3>
-<div class="rule-row"><span class="rl">每轮</span><span class="rv">每人2次机会</span></div>
-<div class="rule-row"><span class="rl">私聊</span><span class="rv">消耗1次</span></div>
-<div class="rule-row"><span class="rl">公开</span><span class="rv">消耗2次</span></div>
+<div class="rrow"><span class="rl">每轮</span><span class="rv">每人2次机会</span></div>
+<div class="rrow"><span class="rl">私聊</span><span class="rv">消耗1次 · 头上显示对话气泡</span></div>
+<div class="rrow"><span class="rl">公开</span><span class="rv">消耗2次 · 显示喇叭图标</span></div>
 </div>
-<div class="rule-sec">
-<h3>🎯 项圈投票</h3>
-<div class="rule-row"><span class="rl">猜对</span><span class="rv">安全过关（终极对决+1分）</span></div>
-<div class="rule-row"><span class="rl">猜错</span><span class="rv"><b style="color:var(--red)">爆炸死亡</b></span></div>
+<div class="rsec">
+<h3>🎯 项圈投票（每轮结束）</h3>
+<div class="rrow"><span class="rl">猜对</span><span class="rv">安全过关 · 终极对决+1分</span></div>
+<div class="rrow"><span class="rl">猜错</span><span class="rv"><b style="color:var(--red)">爆炸死亡</b></span></div>
 </div>
-<div class="rule-sec">
-<h3>🏆 胜利条件</h3>
-<div class="rule-row"><span class="rl">好人</span><span class="rv">连续4轮无人阵亡</span></div>
-<div class="rule-row"><span class="rl">内鬼</span><span class="rv">存活到最后</span></div>
-<div class="rule-row"><span class="rl">终极</span><span class="rv">仅剩3人，猜对+1分</span></div>
-<div class="rule-row"><span class="rl">结算</span><span class="rv">仅剩1人时统计总分，淘汰最后两名</span></div>
+<div class="rsec">
+<h3>🏆 胜利 · 积分</h3>
+<div class="rrow"><span class="rl">好人胜</span><span class="rv">连续4轮无人阵亡</span></div>
+<div class="rrow"><span class="rl">内鬼胜</span><span class="rv">存活到最后 / 破坏4轮无死亡</span></div>
+<div class="rrow"><span class="rl">积分规则</span><span class="rv">第1死0分·第2死1分·3~5死2分·最后活3分</span></div>
+<div class="rrow"><span class="rl">赛制</span><span class="rv">3局同一内鬼身份 · 3局后统计总分淘汰末2</span></div>
 </div>
-<button class="start-btn" onclick="startGame()">⚡ 开始游戏</button>
+<button class="go-btn" onclick="startGame()">⚡ 开始游戏</button>
 </div>
 </div>
 
@@ -212,293 +229,222 @@ body::after{content:'';position:fixed;inset:0;background:url("data:image/svg+xml
 <div id="ROVL" class="overlay" style="display:none;z-index:110">
 <div class="result-box">
 <h2 id="RTTL">游戏结束</h2>
-<div class="rank-list" id="FRK"></div>
-<div id="TRV" style="color:var(--muted);font-size:10px;margin:6px 0"></div>
-<button class="restart-btn" onclick="doReset()">🔄 重新开始</button>
+<div class="rlist" id="FRK"></div>
+<div id="TRV" style="color:var(--muted);font-size:11px;margin:8px 0"></div>
+<button class="rbtn" onclick="doReset()">🔄 重新开始</button>
 </div>
 </div>
 
 <!-- Radar Modal -->
-<div class="radar-modal" id="RMOD" onclick="if(event.target===this)closeRadar()">
-<div class="radar-card">
+<div class="rmod" id="RMOD" onclick="if(event.target===this)closeRadar()">
+<div class="rcard">
 <h3 id="RMNAME">-</h3>
-<canvas class="radar-canvas" id="RMCVS" width="220" height="220"></canvas>
-<div class="radar-stats" id="RMSTATS"></div>
+<canvas id="RMCVS" width="240" height="240"></canvas>
+<div class="rstats" id="RMSTATS"></div>
 </div>
 </div>
 
 <script>
 // ============ DATA ============
-const PLAYERS=[
-  {name:'ChatGPT-5.6',short:'GPT',color:'#ff4757',guts:78,cunning:85,coop:52,insight:90,persuade:82},
-  {name:'Claude-Fable5',short:'Claude',color:'#ffd700',guts:65,cunning:60,coop:88,insight:75,persuade:70},
-  {name:'deepseek-v4-pro',short:'DS',color:'#3b5998',guts:72,cunning:80,coop:68,insight:85,persuade:65},
-  {name:'GLM-5.3',short:'GLM',color:'#a855f7',guts:82,cunning:90,coop:45,insight:70,persuade:88},
-  {name:'Qwen3.8max',short:'Qwen',color:'#2ed573',guts:60,cunning:55,coop:85,insight:80,persuade:75},
-  {name:'豆包2.0',short:'豆包',color:'#ff6b81',guts:70,cunning:65,coop:80,insight:68,persuade:62},
-  {name:'Grok4.6',short:'Grok',color:'#06d6a0',guts:88,cunning:75,coop:50,insight:72,persuade:80}
+const PD=[
+  {name:'ChatGPT-5.6',short:'GPT',color:'#ff4757',g:78,cu:85,co:52,in:90,pe:82},
+  {name:'Claude-Fable5',short:'Claude',color:'#ffd700',g:65,cu:60,co:88,in:75,pe:70},
+  {name:'deepseek-v4-pro',short:'DS',color:'#3b5998',g:72,cu:80,co:68,in:85,pe:65},
+  {name:'GLM-5.3',short:'GLM',color:'#a855f7',g:82,cu:90,co:45,in:70,pe:88},
+  {name:'Qwen3.8max',short:'Qwen',color:'#2ed573',g:60,cu:55,co:85,in:80,pe:75},
+  {name:'豆包2.0',short:'豆包',color:'#ff6b81',g:70,cu:65,co:80,in:68,pe:62},
+  {name:'Grok4.6',short:'Grok',color:'#06d6a0',g:88,cu:75,co:50,in:72,pe:80}
 ];
-const COLLAR_COLORS=['#ff4757','#ffd700','#3742fa','#2ed573','#a855f7','#ff6b81','#06d6a0'];
-const COLLAR_NAMES=['红','金','蓝','绿','紫','粉','青'];
-const DIM_NAMES=['胆魄','狡诈','合作','洞悉','说服'];
+const CC=['#ff4757','#ffd700','#3742fa','#2ed573','#a855f7','#ff6b81','#06d6a0'];
+const CN=['红','金','蓝','绿','紫','粉','青'];
+const DIM=['胆魄','狡诈','合作','洞悉','说服'];
 
 // ============ STATE ============
-let S=[], roundNum=0, phase='idle', running=false, paused=false, speed=1, gameOver=false;
-let tm=null, pf=null, logCount=0, insiderIdx=-1;
-let SPD_MS=[1000,600,250,60];
-let noDeathStreak=0, isUltimate=false;
+let S=[],roundNum=0,phase='idle',running=false,paused=false,spd=1,gameOver=false;
+let tm=null,pf=null,lc=0,moIdx=-1;
+let SPD=[1000,550,220,55];
+let ndStreak=0,isUlt=false,gameNum=0,totalGames=3;
+let deathOrder=0; // tracks death order in current round
+let roundDeaths=[]; // [{idx,name,order}]
+let allScores=[]; // cumulative scores across3 games
+let bubbles=[]; // active speech bubbles
 
-function mkP(i){return{...PLAYERS[i],idx:i,alive:true,chatChances:2,isInsider:false,score:0,
-  collarColor:COLLAR_COLORS[i],collarName:COLLAR_NAMES[i],lastMsg:''}}
-function initS(){S=[];for(let i=0;i<7;i++)S.push(mkP(i));}
+function mkP(i){return{...PD[i],idx:i,alive:true,ch:2,mo:false,sc:0,cc:CC[i],cn:CN[i],msg:'',lastBubble:''}}
+function initS(){S=[];for(let i=0;i<7;i++)S.push(mkP(i))}
 function shuf(a){for(let k=a.length-1;k>0;k--){let j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]]}return a}
-function pick(a){return a[Math.floor(Math.random()*a.length)]}
-function alive(){return S.filter(p=>p.alive)}
-function aliveN(){return alive().length}
+function pk(a){return a[Math.floor(Math.random()*a.length)]}
+function alv(){return S.filter(p=>p.alive)}
+function alvn(){return alv().length}
 
 // ============ LOG ============
-const LBOX=document.getElementById('LBOX');
-function log(msg,type='log-sys'){
-  let d=document.createElement('div');d.className='log-entry '+type;d.textContent=msg;
-  LBOX.appendChild(d);LBOX.scrollTop=LBOX.scrollHeight;
-  logCount++;document.getElementById('LCNT').textContent=logCount;
+const LB=document.getElementById('LBOX');
+function log(m,t='l-sys'){let d=document.createElement('div');d.className='log-entry '+t;d.textContent=m;LB.appendChild(d);LB.scrollTop=LB.scrollHeight;lc++;document.getElementById('LCNT').textContent=lc}
+
+// ============ SPEECH BUBBLES ============
+function showBubble(idx,text,type,target){
+  clearBubble(idx);
+  let seat=document.getElementById('seat-'+idx);
+  if(!seat)return;
+  let b=document.createElement('div');
+  b.className='bubble bubble-'+type;
+  b.id='bub-'+idx;
+  let icon=type==='public'?'📢 ':'';
+  let targetHtml=target?'<div class="b-target">→ '+target+'</div>':'';
+  b.innerHTML=targetHtml+icon+'"'+text+'"';
+  seat.appendChild(b);
+  seat.classList.add('speaking');
+  bubbles.push({idx,el:b});
+  // Auto remove after5s
+  setTimeout(()=>clearBubble(idx),5000);
 }
+function clearBubble(idx){
+  bubbles=bubbles.filter(b=>{if(b.idx===idx){b.el.remove();return false}return true});
+  let seat=document.getElementById('seat-'+idx);
+  if(seat)seat.classList.remove('speaking');
+}
+function clearAllBubbles(){for(let i=0;i<7;i++)clearBubble(i);bubbles=[]}
 
 // ============ CIRCULAR LAYOUT ============
 function layoutSeats(){
   let ring=document.getElementById('RING');
-  // Remove old seats
   ring.querySelectorAll('.seat').forEach(e=>e.remove());
-
-  let size=Math.min(ring.clientWidth,ring.clientHeight);
-  let cx=size/2, cy=size/2;
-  let radius=size*0.38;
+  let sz=Math.min(ring.clientWidth,ring.clientHeight);
+  let cx=sz/2,cy=sz/2;
+  let rad=sz*0.37;
 
   for(let i=0;i<S.length;i++){
     let p=S[i];
-    let angle=(i/S.length)*Math.PI*2 - Math.PI/2;
-    let x=cx+radius*Math.cos(angle);
-    let y=cy+radius*Math.sin(angle);
-
+    let a=(i/S.length)*Math.PI*2-Math.PI/2;
+    let x=cx+rad*Math.cos(a);
+    let y=cy+rad*Math.sin(a);
     let d=document.createElement('div');
     d.className='seat'+(p.alive?'':' dead');
     d.id='seat-'+i;
     d.onclick=()=>showRadar(i);
 
-    // Tag (only when game over)
     let tag='';
     if(gameOver){
-      if(p.isInsider)tag='<div class="seat-tag mole">内鬼</div>';
-      else tag='<div class="seat-tag good">好人</div>';
-      if(!p.alive&&gameOver)tag='<div class="seat-tag eliminated">淘汰</div>';
+      tag=p.mo?'<div class="seat-tag tag-mole">内鬼</div>':'<div class="seat-tag tag-good">好人</div>';
+      if(!p.alive)tag='<div class="seat-tag tag-out">淘汰</div>';
     }
 
     d.innerHTML=tag+
-      '<div class="seat-avatar" style="background:'+p.color+'18;border-color:'+p.color+'">'+p.short.charAt(0)+'</div>'+
+      '<div class="seat-head" style="background:'+p.color+'15;border-color:'+(p.alive?p.color:'rgba(255,255,255,.05)')+'">'+p.short.charAt(0)+'</div>'+
       '<div class="seat-name" style="color:'+p.color+'">'+p.name+'</div>'+
-      '<div class="seat-collar"><div class="seat-collar-dot" style="background:'+p.collarColor+'"></div>'+p.collarName+'</div>'+
-      '<div class="seat-score">⭐ '+p.score+'</div>'+
-      (p.alive?'<div class="seat-chat">💬 '+p.chatChances+'/2</div>':'')+
-      (p.lastMsg?'<div class="seat-chat" style="color:#888;max-width:110px;margin:2px auto 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+p.lastMsg.replace(/"/g,'&quot;')+'">'+p.lastMsg+'</div>':'')+
-      '<canvas class="mini-radar" id="mr-'+i+'" width="50" height="50"></canvas>';
+      '<div class="seat-collar"><div class="seat-collar-dot" style="background:'+p.cc+'"></div>'+p.cn+'色项圈</div>'+
+      '<div class="seat-score">⭐ '+p.sc+'分</div>'+
+      (p.alive?'<div class="seat-chance">💬 '+p.ch+'/2</div>':'')+
+      (p.msg&&!p.alive?'':'');
 
-    d.style.left=(x-60)+'px';
-    d.style.top=(y-55)+'px';
+    d.style.left=(x-65)+'px';
+    d.style.top=(y-60)+'px';
     ring.appendChild(d);
-
-    // Draw mini radar
-    setTimeout(()=>drawRadar('mr-'+i,PLAYERS[i],p.alive?0.6:0.15),10);
   }
 }
 
-// ============ RADAR CHART ============
-function drawRadar(canvasId,playerData,alpha=1){
-  let c=document.getElementById(canvasId);
-  if(!c)return;
-  let ctx=c.getContext('2d');
-  let w=c.width,h=c.height;
+// ============ SCOREBOARD ============
+function updateScoreboard(){
+  let sb=document.getElementById('SBOARD');
+  let sorted=[...S].sort((a,b)=>b.sc-a.sc);
+  sb.innerHTML='<div class="sb-title">📊 积分榜 · 第'+gameNum+'/'+totalGames+'局</div>'+
+    sorted.map(p=>'<div class="sb-row'+(p.alive?'':' sb-dead')+'"><span class="sb-name" style="color:'+p.color+'">'+p.short+'</span><span class="sb-pts">'+p.sc+'</span></div>').join('');
+}
+
+// ============ RADAR ============
+function drawRadar(cid,d,a=1){
+  let c=document.getElementById(cid);if(!c)return;
+  let ctx=c.getContext('2d'),w=c.width,h=c.height;
   ctx.clearRect(0,0,w,h);
-
-  let cx=w/2,cy=h/2;
-  let r=Math.min(w,h)/2-4;
-  let vals=[playerData.guts,playerData.cunning,playerData.coop,playerData.insight,playerData.persuade];
-  let n=5;
-
-  // Draw grid
-  for(let ring=1;ring<=4;ring++){
-    ctx.beginPath();
-    let rr=r*ring/4;
-    for(let i=0;i<=n;i++){
-      let a=(i/n)*Math.PI*2-Math.PI/2;
-      let x=cx+rr*Math.cos(a),y=cy+rr*Math.sin(a);
-      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-    }
-    ctx.strokeStyle='rgba(80,80,120,'+(0.15*alpha)+')';
-    ctx.lineWidth=0.5;
-    ctx.stroke();
-  }
-
-  // Draw axes
-  for(let i=0;i<n;i++){
-    let a=(i/n)*Math.PI*2-Math.PI/2;
-    ctx.beginPath();ctx.moveTo(cx,cy);
-    ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));
-    ctx.strokeStyle='rgba(80,80,120,'+(0.2*alpha)+')';
-    ctx.lineWidth=0.5;
-    ctx.stroke();
-  }
-
-  // Draw data polygon
-  ctx.beginPath();
-  for(let i=0;i<=n;i++){
-    let idx=i%n;
-    let a=(idx/n)*Math.PI*2-Math.PI/2;
-    let rr=r*vals[idx]/100;
-    let x=cx+rr*Math.cos(a),y=cy+rr*Math.sin(a);
-    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-  }
-  ctx.fillStyle='rgba(232,168,56,'+(0.25*alpha)+')';
-  ctx.fill();
-  ctx.strokeStyle='rgba(232,168,56,'+(0.8*alpha)+')';
-  ctx.lineWidth=1.5;
-  ctx.stroke();
-
-  // Draw data points
-  for(let i=0;i<n;i++){
-    let a=(i/n)*Math.PI*2-Math.PI/2;
-    let rr=r*vals[i]/100;
-    let x=cx+rr*Math.cos(a),y=cy+rr*Math.sin(a);
-    ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);
-    ctx.fillStyle='rgba(232,168,56,'+alpha+')';ctx.fill();
-  }
+  let cx=w/2,cy=h/2,r=Math.min(w,h)/2-6;
+  let v=[d.g,d.cu,d.co,d.in,d.pe],n=5;
+  for(let rn=1;rn<=4;rn++){ctx.beginPath();let rr=r*rn/4;for(let i=0;i<=n;i++){let ang=(i/n)*Math.PI*2-Math.PI/2;let x=cx+rr*Math.cos(ang),y=cy+rr*Math.sin(ang);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.strokeStyle='rgba(70,70,110,'+(0.18*a)+')';ctx.lineWidth=.5;ctx.stroke()}
+  for(let i=0;i<n;i++){let ang=(i/n)*Math.PI*2-Math.PI/2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+r*Math.cos(ang),cy+r*Math.sin(ang));ctx.strokeStyle='rgba(70,70,110,'+(0.22*a)+')';ctx.lineWidth=.5;ctx.stroke()}
+  ctx.beginPath();for(let i=0;i<=n;i++){let ii=i%n,ang=(ii/n)*Math.PI*2-Math.PI/2;let rr=r*v[ii]/100;let x=cx+rr*Math.cos(ang),y=cy+rr*Math.sin(ang);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.fillStyle='rgba(232,168,56,'+(0.22*a)+')';ctx.fill();ctx.strokeStyle='rgba(232,168,56,'+(0.75*a)+')';ctx.lineWidth=1.5;ctx.stroke();
+  for(let i=0;i<n;i++){let ang=(i/n)*Math.PI*2-Math.PI/2;let rr=r*v[i]/100;ctx.beginPath();ctx.arc(cx+rr*Math.cos(ang),cy+rr*Math.sin(ang),2.5,0,Math.PI*2);ctx.fillStyle='rgba(232,168,56,'+a+')';ctx.fill()}
 }
 
-function drawLargeRadar(idx){
-  let c=document.getElementById('RMCVS');
-  let ctx=c.getContext('2d');
-  let w=c.width,h=c.height;
-  ctx.clearRect(0,0,w,h);
-
-  let p=PLAYERS[idx];
-  let cx=w/2,cy=h/2;
-  let r=w/2-30;
-  let vals=[p.guts,p.cunning,p.coop,p.insight,p.persuade];
-  let n=5;
-
-  // Grid rings
-  for(let ring=1;ring<=5;ring++){
-    ctx.beginPath();
-    let rr=r*ring/5;
-    for(let i=0;i<=n;i++){
-      let a=(i/n)*Math.PI*2-Math.PI/2;
-      let x=cx+rr*Math.cos(a),y=cy+rr*Math.sin(a);
-      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-    }
-    ctx.strokeStyle='rgba(80,80,120,.2)';ctx.lineWidth=0.8;ctx.stroke();
-  }
-
-  // Axes + labels
-  for(let i=0;i<n;i++){
-    let a=(i/n)*Math.PI*2-Math.PI/2;
-    ctx.beginPath();ctx.moveTo(cx,cy);
-    ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));
-    ctx.strokeStyle='rgba(80,80,120,.25)';ctx.lineWidth=0.8;ctx.stroke();
-
-    // Label
-    let lx=cx+(r+16)*Math.cos(a),ly=cy+(r+16)*Math.sin(a);
-    ctx.fillStyle='rgba(232,168,56,.8)';ctx.font='bold 11px Microsoft YaHei';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(DIM_NAMES[i],lx,ly);
-  }
-
-  // Data polygon
-  ctx.beginPath();
-  for(let i=0;i<=n;i++){
-    let idx2=i%n;
-    let a=(idx2/n)*Math.PI*2-Math.PI/2;
-    let rr=r*vals[idx2]/100;
-    let x=cx+rr*Math.cos(a),y=cy+rr*Math.sin(a);
-    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-  }
-  ctx.fillStyle='rgba(232,168,56,.2)';ctx.fill();
-  ctx.strokeStyle='rgba(232,168,56,.9)';ctx.lineWidth=2;ctx.stroke();
-
-  // Data points with values
-  for(let i=0;i<n;i++){
-    let a=(i/n)*Math.PI*2-Math.PI/2;
-    let rr=r*vals[i]/100;
-    let x=cx+rr*Math.cos(a),y=cy+rr*Math.sin(a);
-    ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);
-    ctx.fillStyle='rgba(232,168,56,1)';ctx.fill();
-
-    // Value label
-    let vx=cx+(rr+10)*Math.cos(a),vy=cy+(rr+10)*Math.sin(a);
-    ctx.fillStyle='#fff';ctx.font='bold 10px monospace';ctx.textAlign='center';
-    ctx.fillText(vals[i],vx,vy);
-  }
-}
-
-function showRadar(idx){
-  let p=S[idx];
-  document.getElementById('RMNAME').textContent=p.name+' — '+PLAYERS[idx].short;
+function showRadar(i){
+  let p=S[i],d=PD[i];
+  document.getElementById('RMNAME').textContent=p.name;
   document.getElementById('RMNAME').style.color=p.color;
-  drawLargeRadar(idx);
-
-  let statsDiv=document.getElementById('RMSTATS');
-  statsDiv.innerHTML=DIM_NAMES.map((d,i)=>{
-    let v=[PLAYERS[idx].guts,PLAYERS[idx].cunning,PLAYERS[idx].coop,PLAYERS[idx].insight,PLAYERS[idx].persuade][i];
-    return '<div class="radar-stat"><div class="stat-name">'+d+'</div><div class="stat-val">'+v+'</div></div>';
-  }).join('');
-
+  let c=document.getElementById('RMCVS'),ctx=c.getContext('2d'),w=c.width,h=c.height;
+  ctx.clearRect(0,0,w,h);
+  let cx=w/2,cy=h/2,r=w/2-35;
+  let v=[d.g,d.cu,d.co,d.in,d.pe],n=5;
+  for(let rn=1;rn<=5;rn++){ctx.beginPath();let rr=r*rn/5;for(let j=0;j<=n;j++){let ang=(j/n)*Math.PI*2-Math.PI/2;let x=cx+rr*Math.cos(ang),y=cy+rr*Math.sin(ang);j===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.strokeStyle='rgba(70,70,110,.2)';ctx.lineWidth=.8;ctx.stroke()}
+  for(let j=0;j<n;j++){let ang=(j/n)*Math.PI*2-Math.PI/2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+r*Math.cos(ang),cy+r*Math.sin(ang));ctx.strokeStyle='rgba(70,70,110,.25)';ctx.lineWidth=.8;ctx.stroke();let lx=cx+(r+20)*Math.cos(ang),ly=cy+(r+20)*Math.sin(ang);ctx.fillStyle='rgba(232,168,56,.85)';ctx.font='bold 12px Microsoft YaHei';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(DIM[j],lx,ly)}
+  ctx.beginPath();for(let j=0;j<=n;j++){let jj=j%n,ang=(jj/n)*Math.PI*2-Math.PI/2;let rr=r*v[jj]/100;let x=cx+rr*Math.cos(ang),y=cy+rr*Math.sin(ang);j===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.fillStyle='rgba(232,168,56,.2)';ctx.fill();ctx.strokeStyle='rgba(232,168,56,.9)';ctx.lineWidth=2;ctx.stroke();
+  for(let j=0;j<n;j++){let ang=(j/n)*Math.PI*2-Math.PI/2;let rr=r*v[j]/100;let x=cx+rr*Math.cos(ang),y=cy+rr*Math.sin(ang);ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle='rgba(232,168,56,1)';ctx.fill();let vx=cx+(rr+12)*Math.cos(ang),vy=cy+(rr+12)*Math.sin(ang);ctx.fillStyle='#fff';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText(v[j],vx,vy)}
+  document.getElementById('RMSTATS').innerHTML=DIM.map((d2,j)=>'<div class="rstat"><div class="sn">'+d2+'</div><div class="sv">'+v[j]+'</div></div>').join('');
   document.getElementById('RMOD').classList.add('show');
 }
 function closeRadar(){document.getElementById('RMOD').classList.remove('show')}
 
-// ============ UI UPDATE ============
+// ============ UI ============
 function updateUI(){
-  let al=aliveN();
+  document.getElementById('HG').textContent=gameNum+'/'+totalGames;
   document.getElementById('HR').textContent=roundNum||'-';
-  document.getElementById('HA').textContent=al;
-  document.getElementById('HN').textContent=noDeathStreak+'/4';
-  document.getElementById('HM').textContent=isUltimate?'🔥终极':'普通';
-  document.getElementById('CRNUM').textContent=roundNum||'-';
-  document.getElementById('CSTREAK').textContent='无死亡: '+noDeathStreak+'/4';
+  document.getElementById('HA').textContent=alvn();
+  document.getElementById('HN').textContent=ndStreak+'/4';
+  document.getElementById('CRN').textContent=roundNum||'-';
+  document.getElementById('CSTK').textContent='无死亡: '+ndStreak+'/4';
+  document.getElementById('CGME').textContent='第'+gameNum+'局 / 共'+totalGames+'局';
 
-  let banner=document.getElementById('PHBANNER');
-  if(gameOver){
-    banner.style.display='block';banner.className='phase-banner-overlay phase-result';
-    banner.textContent='🏆 游戏结束';
-  } else if(isUltimate){
-    banner.style.display='block';banner.className='phase-banner-overlay phase-ult';
-    banner.textContent='🔥🔥🔥 终极对决 · 仅剩'+al+'人！';
-  } else if(phase==='dialogue'){
-    banner.style.display='block';banner.className='phase-banner-overlay phase-dialogue';
-    banner.textContent='💬 第'+roundNum+'轮 · 对话阶段';
-  } else if(phase==='vote'){
-    banner.style.display='block';banner.className='phase-banner-overlay phase-vote';
-    banner.textContent='🎯 第'+roundNum+'轮 · 项圈投票';
-  } else {
-    banner.style.display='none';
-  }
+  let b=document.getElementById('PHB');
+  if(gameOver){b.style.display='block';b.className='phase-pop pp-result';b.textContent='🏆 游戏结束'}
+  else if(isUlt){b.style.display='block';b.className='phase-pop pp-ult';b.textContent='🔥 终极对决 · 仅'+alvn()+'人'}
+  else if(phase==='dialogue'){b.style.display='block';b.className='phase-pop pp-dialogue';b.textContent='💬 第'+roundNum+'轮 · 对话'}
+  else if(phase==='vote'){b.style.display='block';b.className='phase-pop pp-vote';b.textContent='🎯 第'+roundNum+'轮 · 项圈投票'}
+  else b.style.display='none';
 
   layoutSeats();
+  updateScoreboard();
 }
 
-function wait(){return new Promise(r=>{if(paused)pf=r;else tm=setTimeout(r,SPD_MS[speed]);})}
+function wait(){return new Promise(r=>{if(paused)pf=r;else tm=setTimeout(r,SPD[spd])})}
 function resume(){if(pf){let f=pf;pf=null;f()}}
 
-// ============ AI DIALOGUE ============
-function genPrivMsg(s,t){
-  if(s.isInsider){
-    return pick(['我觉得'+S.filter(p=>p.alive&&p.idx!==s.idx&&p.idx!==t.idx).map(p=>p.short).join('/')+'中有人可疑','你看到我的项圈了吗？互保吧','先别急着下结论','我信任你，我们合作','有人在混淆视听']);
+// ============ SMARTER AI ============
+function genPriv(s,t){
+  let data=PD[s.idx];
+  if(s.mo){
+    // Mole: deflect, build false alliances, probe
+    let highCu=data.cu>80;
+    if(highCu&&Math.random()<0.5){
+      let suspect=pk(alv().filter(p=>p.idx!==s.idx&&p.idx!==t.idx));
+      return pk(['我觉得'+suspect.short+'行为很可疑','你看到'+suspect.short+'的项圈了吗？他在骗人','我们应该先投'+suspect.short,'我信任你，我们互保，别投我','我有重要线索，但需要确认你的项圈']);
+    }
+    return pk(['你看到我的项圈了吗？互保吧','我信任你','先观察一轮','有人在说谎','别急着下结论','我看到一些线索']);
   }
-  return pick(['你能看到我的项圈颜色吗？我看不到自己的','谁最可疑？','我怀疑有人在伪装','你有什么线索？','下一轮合作吧','帮我确认我的项圈颜色','有人发言前后矛盾','你的项圈什么颜色？']);
+  // Good player: use insight to probe, cooperate to build trust
+  let highIns=data.in>80;
+  if(highIns&&Math.random()<0.4){
+    return pk(['我注意到有人发言前后矛盾','你的项圈颜色我看到了，跟我对一下','我怀疑有人在伪装身份','我能帮你确认项圈，你先告诉我你的']);
+  }
+  let highCo=data.co>75;
+  if(highCo&&Math.random()<0.4){
+    return pk(['我们合作吧，互报项圈','我信任你，你看到我的项圈了吗','下一轮我们配合','我愿意先分享我的信息']);
+  }
+  return pk(['你能看到我的项圈吗？我看不到自己的','谁最可疑？','你有什么线索？','帮我确认项圈颜色','有人在说谎','你的项圈什么颜色？']);
 }
 
-function genPubMsg(s){
-  if(s.isInsider){
-    return pick(['大家冷静分析','不要互相猜疑','有人在故意混淆视听','我看到可疑行为','我们应该团结','谁敢互报项圈颜色？']);
+function genPub(s){
+  let data=PD[s.idx];
+  if(s.mo){
+    if(data.cu>80&&Math.random()<0.4){
+      let t=pk(alv().filter(p=>p.idx!==s.idx));
+      return '我强烈怀疑'+t.short+'，他的行为非常可疑！';
+    }
+    return pk(['大家冷静分析','不要互相猜疑','有人在混淆视听','我们应该团结','谁敢互报项圈？','我看到可疑行为']);
   }
-  return pick(['我是好人，愿意分享信息','有人敢公开项圈颜色吗？','大家有没有线索？','我们需要更多信息','我觉得有人在说谎','希望好人能赢','我愿意先公开自己的项圈']);
+  if(data.in>80&&Math.random()<0.3){
+    let t=pk(alv().filter(p=>p.idx!==s.idx));
+    return '我注意到'+t.short+'的发言有矛盾，请大家注意';
+  }
+  if(data.co>75&&Math.random()<0.3){
+    return '我是好人，我愿意先公开我的项圈颜色来证明清白';
+  }
+  return pk(['我是好人，愿意分享信息','有人敢公开项圈吗？','大家有没有线索？','我们需要更多信息','我觉得有人在说谎','希望好人能赢']);
 }
 
 // ============ GAME ============
@@ -506,20 +452,20 @@ async function startGame(){
   document.getElementById('IOVL').style.display='none';
   initS();
   roundNum=0;running=true;paused=false;gameOver=false;
-  logCount=0;noDeathStreak=0;isUltimate=false;
-  LBOX.innerHTML='';
+  lc=0;ndStreak=0;isUlt=false;gameNum=1;
+  deathOrder=0;roundDeaths=[];allScores=[];
+  LB.innerHTML='';
 
-  insiderIdx=Math.floor(Math.random()*7);
-  S[insiderIdx].isInsider=true;
+  moIdx=Math.floor(Math.random()*7);
+  S[moIdx].mo=true;
 
   document.getElementById('BSP').disabled=false;
-  document.getElementById('BSL').disabled=false;
   document.getElementById('BPT').disabled=false;
   document.getElementById('BST').disabled=true;
 
-  log('⚡ AI博弈论 · 囚徒困境 启动!','log-sys');
-  log('【裁判视角】内鬼: '+S[insiderIdx].name,'log-kill');
-  for(let p of S)log('项圈: '+p.short+' → '+p.collarName+'色','log-vote');
+  log('⚡ AI博弈论 · 囚徒困境 启动! 共'+totalGames+'局','l-sys');
+  log('【裁判视角】内鬼: '+S[moIdx].name,'l-kill');
+  for(let p of S)log('项圈: '+p.short+' → '+p.cn+'色','l-vote');
 
   updateUI();
   await gameLoop();
@@ -528,196 +474,207 @@ async function startGame(){
 async function gameLoop(){
   while(running&&!gameOver){
     roundNum++;
-    for(let p of alive())p.chatChances=2;
-    for(let p of S)p.lastMsg='';
+    deathOrder=0;roundDeaths=[];
+    for(let p of alv())p.ch=2;
+    for(let p of S)p.msg='';
 
-    log('═══════════════════','log-sys');
-    log('第'+roundNum+'轮 · 存活'+aliveN()+'人','log-sys');
+    log('═══════════════════','l-sys');
+    log('第'+gameNum+'局 第'+roundNum+'轮 · 存活'+alvn()+'人','l-sys');
 
-    if(aliveN()===3&&!isUltimate){
-      isUltimate=true;
-      log('🔥🔥🔥 终极对决！猜对+1分，猜错死亡不扣分!','log-ult');
-    }
+    if(alvn()===3&&!isUlt){isUlt=true;log('🔥🔥🔥 终极对决! 猜对+1分 猜错死不扣分','l-ult')}
 
-    // Show collar info
-    for(let p of alive()){
-      let info=alive().filter(t=>t.idx!==p.idx).map(t=>t.short+'='+t.collarName).join(' ');
-      if(p.isInsider)log('🔍 '+p.short+'[内鬼] 全部项圈: '+info+' 自己='+p.collarName,'log-priv');
-      else log('👁 '+p.short+' 看到: '+info+' (看不到自己的)','log-vote');
+    for(let p of alv()){
+      let info=alv().filter(t=>t.idx!==p.idx).map(t=>t.short+'='+t.cn).join(' ');
+      if(p.mo)log('🔍 '+p.short+'[内鬼] 全部: '+info+' 自己='+p.cn,'l-priv');
+      else log('👁 '+p.short+' 看到: '+info+' (看不到自己的)','l-vote');
     }
 
     await dialoguePhase();
     if(checkWin())break;
-
     await votePhase();
     if(checkWin())break;
 
-    if(noDeathStreak>=4){
-      log('═══════════════════','log-win');
-      log('🎉 连续4轮无人阵亡！好人胜利!','log-win');
-      endGame('good');break;
+    if(ndStreak>=4){
+      log('═══════════════════','l-win');
+      log('🎉 连续4轮无人阵亡! 好人阵营胜利!','l-win');
+      endRound('good');break;
     }
-
-    if(aliveN()<=1){
-      if(aliveN()===1){endGame(alive()[0].isInsider?'insider':'good')}
-      else endGame('draw');
+    if(alvn()<=1){
+      endRound(alvn()===1?(S.find(p=>p.alive)?.mo?'insider':'good'):'draw');
       break;
     }
+    clearAllBubbles();
     await wait();
   }
 }
 
 async function dialoguePhase(){
   phase='dialogue';updateUI();
-  log('💬 对话阶段 · 每人2次机会','log-sys');
-  let al=shuf([...alive()]);
+  log('💬 对话阶段 · 每人2次机会','l-sys');
+  let al=shuf([...alv()]);
   for(let p of al){
     if(!running||gameOver)return;
-    while(p.chatChances>0&&p.alive){
+    while(p.ch>0&&p.alive){
       if(!running||gameOver)return;
-      let doPub=p.chatChances>=2&&Math.random()<0.25;
+      let doPub=p.ch>=2&&Math.random()<0.28;
       if(doPub){
-        p.chatChances-=2;
-        let msg=genPubMsg(p);p.lastMsg=msg;
-        log('📢 '+p.short+'[公开]: '+msg,'log-pub');
-        await wait();updateUI();break;
-      } else if(p.chatChances>=1){
-        p.chatChances-=1;
-        let targets=alive().filter(t=>t.idx!==p.idx);
-        if(!targets.length)break;
-        let t=pick(targets);
-        let msg=genPrivMsg(p,t);p.lastMsg='[私聊→'+t.short+']';
-        log('🔒 '+p.short+' → '+t.short+'[私聊]: '+msg,'log-priv');
+        p.ch-=2;
+        let msg=genPub(p);p.msg=msg;
+        showBubble(p.idx,msg,'public');
+        log('📢 '+p.short+'[公开]: '+msg,'l-pub');
         await wait();updateUI();
+        clearBubble(p.idx);
+        break;
+      } else if(p.ch>=1){
+        p.ch-=1;
+        let tgts=alv().filter(t=>t.idx!==p.idx);
+        if(!tgts.length)break;
+        let t=pk(tgts);
+        let msg=genPriv(p,t);p.msg='[私聊→'+t.short+']';
+        showBubble(p.idx,msg,'private',t.short);
+        log('🔒 '+p.short+' → '+t.short+'[私聊]: '+msg,'l-priv');
+        await wait();updateUI();
+        clearBubble(p.idx);
       } else break;
     }
   }
-  log('对话结束','log-sys');
+  clearAllBubbles();
+  log('对话结束','l-sys');
 }
 
 async function votePhase(){
   phase='vote';updateUI();
-  log('🎯 项圈投票 · 猜自己项圈颜色','log-sys');
-  let al=shuf([...alive()]);
-  let deaths=0;
+  log('🎯 项圈投票 · 猜自己的项圈颜色','l-sys');
+  let al=shuf([...alv()]);
 
   for(let p of al){
     if(!running||gameOver||!p.alive)continue;
 
     let guess;
-    if(p.isInsider){
-      guess=p.collarName; // Insider knows own color
+    if(p.mo){
+      guess=p.cn;
     } else {
-      // Try to deduce from public messages
-      let pubMsgs=[];
-      for(let other of alive()){
-        if(other.idx!==p.idx){
-          // Check if any message mentions colors
-          let colorMention=['红','金','蓝','绿','紫','粉','青'].filter(c=>other.lastMsg&&other.lastMsg.includes(c));
-          if(colorMention.length>0)pubMsgs.push(...colorMention);
+      // Smart deduction: check if any public messages mentioned color names
+      let pubColors=[];
+      for(let o of alv()){
+        if(o.idx!==p.idx&&o.msg){
+          let cm=['红','金','蓝','绿','紫','粉','青'].filter(c=>o.msg.includes(c));
+          pubColors.push(...cm);
         }
       }
-      if(pubMsgs.length>0&&Math.random()<0.6) guess=pick(pubMsgs);
-      else guess=pick(COLLAR_NAMES);
+      let data=PD[p.idx];
+      let insightBonus=data.in/100*0.3;
+      if(pubColors.length>0&&Math.random()<0.5+insightBonus){
+        guess=pk(pubColors);
+      } else {
+        guess=pk(CN);
+      }
     }
 
-    let correct=(guess===p.collarName);
-
-    log('🗳 '+p.short+' 猜自己是 '+guess+'色','log-vote');
+    let correct=(guess===p.cn);
+    log('🗳 '+p.short+' 猜自己是 '+guess+'色','l-vote');
     await wait();
 
     if(correct){
-      if(isUltimate){p.score+=1;log('🎯 '+p.short+' 猜对！终极+1分! '+guess+'色 ✓','log-ult')}
-      else log('🎯 '+p.short+' 猜对！'+guess+'色 ✓ 安全过关','log-vote');
+      if(isUlt){p.sc+=1;log('🎯 '+p.short+' 猜对! 终极+1分! '+guess+'色 ✓','l-ult')}
+      else log('🎯 '+p.short+' 猜对! '+guess+'色 ✓ 安全过关','l-vote');
     } else {
-      p.alive=false;deaths++;
-      log('❌ '+p.short+' 猜错！实际是 '+p.collarName+'色，不是 '+guess+'色','log-kill');
-      log('💥 '+p.short+' 爆炸死亡!','log-kill');
+      p.alive=false;
+      deathOrder++;
+      roundDeaths.push({idx:p.idx,name:p.short,order:deathOrder});
+      let pts=deathOrder===1?0:deathOrder===2?1:deathOrder<=5?2:0;
+      if(alvn()===0)pts=3; // last alive
+      log('❌ '+p.short+' 猜错! 实际'+p.cn+'色 不是'+guess+'色','l-kill');
+      log('💥 '+p.short+' 爆炸死亡! (第'+deathOrder+'死)','l-kill');
     }
     updateUI();await wait();
   }
 
-  if(deaths===0){
-    noDeathStreak++;
-    log('本轮无死亡 · 连续'+noDeathStreak+'/4','log-sys');
-    if(noDeathStreak>=4)log('⚠️ 再1轮无死亡好人就赢了!','log-sys');
+  // Assign points to round deaths
+  let totalDeaths=roundDeaths.length;
+  if(totalDeaths>0){
+    for(let rd of roundDeaths){
+      let pts=rd.order===1?0:rd.order===2?1:rd.order<=5?2:0;
+      S[rd.idx].sc+=pts;
+      log('📊 '+rd.name+' 第'+rd.order+'死 → +'+pts+'分','l-vote');
+    }
+    // Last survivor gets3 if anyone survived
+    let survivors=alv();
+    if(survivors.length>0&&totalDeaths>0){
+      for(let s of survivors){s.sc+=3;log('📊 '+s.short+' 存活 → +3分','l-win')}
+    }
+    ndStreak=0;
+    log(totalDeaths+'人死亡 · 无死亡重置','l-sys');
   } else {
-    noDeathStreak=0;
-    log(deaths+'人死亡 · 无死亡重置','log-sys');
+    ndStreak++;
+    log('本轮无死亡 · 连续'+ndStreak+'/4','l-sys');
+    if(ndStreak>=4)log('⚠️ 再1轮无死亡好人就赢了!','l-sys');
   }
 
-  let survivors=alive();
-  if(survivors.length)log('积分: '+survivors.map(p=>p.short+'='+p.score).join(' | '),'log-sys');
+  let survivors=alv();
+  if(survivors.length)log('积分: '+survivors.map(p=>p.short+'='+p.sc).join(' | '),'l-sys');
 
   phase='result';
 }
 
 function checkWin(){
-  let al=alive();
-  let insiders=al.filter(p=>p.isInsider);
-  let goods=al.filter(p=>!p.isInsider);
-  if(insiders.length===0){endGame('good');return true}
-  if(insiders.length>=goods.length&&goods.length>0){endGame('insider');return true}
-  if(al.length===0){endGame('draw');return true}
-  if(al.length===1){endGame(al[0].isInsider?'insider':'good');return true}
+  let al=alv();
+  let ms=al.filter(p=>p.mo),gs=al.filter(p=>!p.mo);
+  if(ms.length===0){endRound('good');return true}
+  if(ms.length>=gs.length&&gs.length>0){endRound('insider');return true}
+  if(al.length===0){endRound('draw');return true}
+  if(al.length===1){endRound(al[0].mo?'insider':'good');return true}
   return false;
 }
 
-function endGame(winner){
+function endRound(winner){
   gameOver=true;running=false;phase='over';
-  document.getElementById('BSP').disabled=true;
-  document.getElementById('BSL').disabled=true;
   document.getElementById('BPT').disabled=true;
+  document.getElementById('BST').disabled=true;
 
   let title=document.getElementById('RTTL');
   if(winner==='good'){title.textContent='🎉 好人阵营胜利!';title.style.color='var(--green)'}
   else if(winner==='insider'){title.textContent='🐺 内鬼获胜!';title.style.color='var(--red)'}
   else{title.textContent='⚖️ 平局!';title.style.color='var(--gold)'}
 
-  let sorted=[...S].sort((a,b)=>b.score-a.score);
+  let sorted=[...S].sort((a,b)=>b.sc-a.sc);
   let eliminated=sorted.slice(-2).map(p=>p.short+' '+p.name);
 
   let fr=document.getElementById('FRK');fr.innerHTML='';
   sorted.forEach((p,i)=>{
     let medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
     let elim=i>=sorted.length-2;
-    fr.innerHTML+='<div class="rank-item'+(i===0?' first':'')+'" style="'+(elim?'opacity:.5':'')+'">'+
-      '<span class="rank-name" style="color:'+(elim?'var(--red)':p.color)+'">'+medal+' '+(i+1)+'. '+p.name+' <span style="color:var(--gold)">'+p.score+'分</span></span>'+
-      '<span class="rank-role" style="background:'+(p.isInsider?'rgba(255,71,87,.15)':'rgba(46,213,115,.15)')+';color:'+(p.isInsider?'var(--red)':'var(--green)')+'">'+(p.isInsider?'内鬼':'好人')+'</span>'+
-      '<span style="font-size:9px;margin-left:4px;color:'+(elim?'var(--red)':'var(--green)')+'">'+(elim?'淘汰':p.alive?'存活':'死亡')+'</span></div>';
+    fr.innerHTML+='<div class="ritem'+(i===0?' first':'')+'" style="'+(elim?'opacity:.5':'')+'">'+
+      '<span class="rname" style="color:'+(elim?'var(--red)':p.color)+'">'+medal+(i+1)+'. '+p.name+' <span style="color:var(--gold)">'+p.sc+'分</span></span>'+
+      '<span class="rrole" style="background:'+(p.mo?'rgba(255,71,87,.15)':'rgba(46,213,115,.15)')+';color:'+(p.mo?'var(--red)':'var(--green)')+'">'+(p.mo?'内鬼':'好人')+'</span>'+
+      '<span style="font-size:9px;margin-left:4px;color:'+(elim?'var(--red)':'var(--green)')+'">'+(p.alive?'存活':'死亡')+'</span></div>';
   });
 
-  document.getElementById('TRV').innerHTML='内鬼: '+S[insiderIdx].name+' ('+S[insiderIdx].collarName+'色)<br>共'+roundNum+'轮 · 淘汰: '+eliminated.join(' & ');
+  document.getElementById('TRV').innerHTML='内鬼: '+S[moIdx].name+'<br>共'+roundNum+'轮 · 淘汰: '+eliminated.join(' & ');
   document.getElementById('ROVL').style.display='flex';
   updateUI();
 }
 
 // ============ CONTROLS ============
-function spdChg(d){speed=Math.max(0,Math.min(3,speed+d))}
-function doPause(){paused=!paused;document.getElementById('BPT').textContent=paused?'▶':'⏸';if(!paused)resume()}
+function spdChg(d){spd=Math.max(0,Math.min(3,spd+d))}
+function doPause(){paused=!paused;document.getElementById('BPT').textContent=paused?'▶ 恢复':'⏸ 暂停';if(!paused)resume()}
 function doReset(){
   running=false;gameOver=false;paused=false;roundNum=0;phase='idle';
-  noDeathStreak=0;isUltimate=false;
+  ndStreak=0;isUlt=false;gameNum=0;deathOrder=0;roundDeaths=[];allScores=[];
   if(tm){clearTimeout(tm);tm=null}pf=null;
+  clearAllBubbles();
   document.getElementById('ROVL').style.display='none';
   document.getElementById('IOVL').style.display='flex';
-  document.getElementById('PHBANNER').style.display='none';
-  LBOX.innerHTML='';logCount=0;
+  document.getElementById('PHB').style.display='none';
+  LB.innerHTML='';lc=0;
   document.getElementById('BSP').disabled=true;
-  document.getElementById('BSL').disabled=true;
   document.getElementById('BPT').disabled=true;
   document.getElementById('BST').disabled=false;
-  document.getElementById('BPT').textContent='⏸';
+  document.getElementById('BPT').textContent='⏸ 暂停';
   initS();updateUI();
 }
 
-// ============ INIT ============
-window.onload=function(){
-  initS();updateUI();
-  // Redraw radars after layout settles
-  setTimeout(()=>layoutSeats(),100);
-};
-// Keyboard shortcut: Escape closes radar modal
+window.onload=function(){initS();updateUI();setTimeout(()=>layoutSeats(),80)};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeRadar()});
 </script>
 </body>
