@@ -79,6 +79,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .l-kill{background:rgba(255,71,87,.06);border-left-color:var(--red);color:var(--red);font-weight:700}
 .l-win{background:rgba(46,213,115,.06);border-left-color:var(--green);color:var(--green);font-weight:700}
 .l-ult{background:rgba(232,168,56,.08);border-left-color:var(--gold);color:var(--gold);font-weight:700}
+.l-trial{background:rgba(255,71,87,.06);border-left-color:var(--red);color:var(--red);font-weight:700}
 
 /* Controls - BIG BUTTONS */
 .log-ctrl{padding:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -177,7 +178,12 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 <button class="ctrl-btn" id="BPT" onclick="doPause()" disabled>⏸ 暂停</button>
 <div class="ctrl-row2">
 <button class="ctrl-btn" id="BSP" onclick="spdChg(1)" disabled>⏩ 加速</button>
-<button class="ctrl-btn" id="BSL" onclick="spdChg(-1)" disabled>⏪ 减速</button>
+<button class="ctrl-btn" id="BSL" onclick="spdChg(-1)" disabled>⏪ 减速</button></div>
+<div class="ctrl-row2" style="margin-top:4px">
+<button class="ctrl-btn spd-btn" onclick="setSpd(0)" style="font-size:11px">0.5x</button>
+<button class="ctrl-btn spd-btn" onclick="setSpd(1)" style="font-size:11px">1x</button>
+<button class="ctrl-btn spd-btn" onclick="setSpd(2)" style="font-size:11px">2x</button>
+<button class="ctrl-btn spd-btn" onclick="setSpd(3)" style="font-size:11px">3x</button>
 </div>
 <button class="ctrl-btn" onclick="doReset()">🔄 重置</button>
 </div>
@@ -208,6 +214,13 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 <div class="rrow"><span class="rl">每轮</span><span class="rv">每人2次机会</span></div>
 <div class="rrow"><span class="rl">私聊</span><span class="rv">消耗1次 · 头上显示对话气泡</span></div>
 <div class="rrow"><span class="rl">公开</span><span class="rv">消耗2次 · 显示喇叭图标</span></div>
+</div>
+<div class="rsec">
+<h3>♥ 红心审判（每轮可发动）</h3>
+<div class="rrow"><span class="rl">发动</span><span class="rv">每轮可发动1次</span></div>
+<div class="rrow"><span class="rl">投票</span><span class="rv">需要半数及以上通过</span></div>
+<div class="rrow"><span class="rl">猜对</span><span class="rv">内鬼被揪出，好人胜利!</span></div>
+<div class="rrow"><span class="rl">猜错</span><span class="rv"><b style="color:var(--red)">参与投票的人全部死亡</b></span></div>
 </div>
 <div class="rsec">
 <h3>🎯 项圈投票（每轮结束）</h3>
@@ -262,7 +275,7 @@ const DIM=['胆魄','狡诈','合作','洞悉','说服'];
 // ============ STATE ============
 let S=[],roundNum=0,phase='idle',running=false,paused=false,spd=1,gameOver=false;
 let tm=null,pf=null,lc=0,moIdx=-1;
-let SPD=[1000,550,220,55];
+let SPD=[3000,1500,700,200];
 let ndStreak=0,isUlt=false,gameNum=0,totalGames=3;
 let deathOrder=0; // tracks death order in current round
 let roundDeaths=[]; // [{idx,name,order}]
@@ -394,6 +407,7 @@ function updateUI(){
   if(gameOver){b.style.display='block';b.className='phase-pop pp-result';b.textContent='🏆 游戏结束'}
   else if(isUlt){b.style.display='block';b.className='phase-pop pp-ult';b.textContent='🔥 终极对决 · 仅'+alvn()+'人'}
   else if(phase==='dialogue'){b.style.display='block';b.className='phase-pop pp-dialogue';b.textContent='💬 第'+roundNum+'轮 · 对话'}
+  else if(phase==='trial'){b.style.display='block';b.className='phase-pop pp-ult';b.textContent='♥ 第'+roundNum+'轮 · 红心审判'}
   else if(phase==='vote'){b.style.display='block';b.className='phase-pop pp-vote';b.textContent='🎯 第'+roundNum+'轮 · 项圈投票'}
   else b.style.display='none';
 
@@ -407,42 +421,65 @@ function resume(){if(pf){let f=pf;pf=null;f()}}
 // ============ SMARTER AI ============
 function genPriv(s,t){
   let data=PD[s.idx];
-  if(s.mo){
-    // Mole: deflect, build false alliances, probe
-    let highCu=data.cu>80;
-    if(highCu&&Math.random()<0.5){
-      let suspect=pk(alv().filter(p=>p.idx!==s.idx&&p.idx!==t.idx));
-      return pk(['我觉得'+suspect.short+'行为很可疑','你看到'+suspect.short+'的项圈了吗？他在骗人','我们应该先投'+suspect.short,'我信任你，我们互保，别投我','我有重要线索，但需要确认你的项圈']);
+  // Good players actively exchange collar info
+  if(!s.mo){
+    // Strategy 1: Ask target to tell me MY collar color
+    if(Math.random()<0.45){
+      return pk(['我的项圈是什么颜色？告诉我','帮我看看我的项圈颜色','你能看到我的项圈吗？我看不到自己的','我需要知道我的项圈颜色，你说实话']);
     }
-    return pk(['你看到我的项圈了吗？互保吧','我信任你','先观察一轮','有人在说谎','别急着下结论','我看到一些线索']);
+    // Strategy 2: Tell target THEIR collar color (build trust)
+    if(Math.random()<0.4){
+      return pk(['我看到你的项圈是'+t.cn+'色','你的项圈我看到了，是'+t.cn+'色','我告诉你：你是'+t.cn+'色项圈，你告诉我我的','你的项圈颜色是'+t.cn+'，现在该你了']);
+    }
+    // Strategy 3: General suspicion
+    if(data.in>80&&Math.random()<0.3){
+      let suspect=pk(alv().filter(p=>p.idx!==s.idx&&p.idx!==t.idx));
+      return pk(['我怀疑'+suspect.short+'是内鬼','你觉得'+suspect.short+'可疑吗？','我注意到有人行为不对劲']);
+    }
+    // Strategy 4: Alliance
+    if(data.co>70&&Math.random()<0.3){
+      return pk(['我们互保吧，你先说我的颜色','合作吧，互相确认项圈','我信任你，先给你我的信息']);
+    }
+    return pk(['谁最可疑？','你有什么线索？','有人在说谎','别急着下结论','我觉得有人在伪装']);
   }
-  // Good player: use insight to probe, cooperate to build trust
-  let highIns=data.in>80;
-  if(highIns&&Math.random()<0.4){
-    return pk(['我注意到有人发言前后矛盾','你的项圈颜色我看到了，跟我对一下','我怀疑有人在伪装身份','我能帮你确认项圈，你先告诉我你的']);
+  // Mole: deflect, lie about colors, build false alliances
+  if(Math.random()<0.4){
+    // Mole LIES about someone's color to create confusion
+    let victim=pk(alv().filter(p=>p.idx!==s.idx&&p.idx!==t.idx));
+    let fakeColors=CN.filter(c=>c!==victim.cn);
+    let fakeColor=pk(fakeColors);
+    return pk(['我看到'+victim.short+'的项圈是'+fakeColor+'色',''+victim.short+'在说谎，他的项圈是'+fakeColor+'色','我们应该小心'+victim.short+'，他项圈是'+fakeColor+'色']);
   }
-  let highCo=data.co>75;
-  if(highCo&&Math.random()<0.4){
-    return pk(['我们合作吧，互报项圈','我信任你，你看到我的项圈了吗','下一轮我们配合','我愿意先分享我的信息']);
+  if(Math.random()<0.3){
+    // Mole truthfully tells target their color (to build trust)
+    return pk(['我看到你的项圈是'+t.cn+'色，是真的','你的项圈是'+t.cn+'色，我告诉你','我信任你，你看到我的项圈了吗？互保吧']);
   }
-  return pk(['你能看到我的项圈吗？我看不到自己的','谁最可疑？','你有什么线索？','帮我确认项圈颜色','有人在说谎','你的项圈什么颜色？']);
+  return pk(['你看到我的项圈了吗？互保吧','我信任你','先观察一轮','有人在说谎','别急着下结论','我觉得'+pk(alv().filter(p=>p.idx!==s.idx&&p.idx!==t.idx)).short+'可疑']);
 }
 
 function genPub(s){
   let data=PD[s.idx];
   if(s.mo){
+    // Mole: deflect, misdirect
     if(data.cu>80&&Math.random()<0.4){
       let t=pk(alv().filter(p=>p.idx!==s.idx));
-      return '我强烈怀疑'+t.short+'，他的行为非常可疑！';
+      let fakeColors=CN.filter(c=>c!==t.cn);
+      return '我强烈怀疑'+t.short+'，他项圈是'+pk(fakeColors)+'色！';
     }
     return pk(['大家冷静分析','不要互相猜疑','有人在混淆视听','我们应该团结','谁敢互报项圈？','我看到可疑行为']);
+  }
+  // Good: share info, call out suspects
+  if(Math.random()<0.35){
+    // Share someone's observed color
+    let t=pk(alv().filter(p=>p.idx!==s.idx));
+    return '我看到'+t.short+'的项圈是'+t.cn+'色，大家注意';
   }
   if(data.in>80&&Math.random()<0.3){
     let t=pk(alv().filter(p=>p.idx!==s.idx));
     return '我注意到'+t.short+'的发言有矛盾，请大家注意';
   }
-  if(data.co>75&&Math.random()<0.3){
-    return '我是好人，我愿意先公开我的项圈颜色来证明清白';
+  if(data.co>75&&Math.random()<0.25){
+    return '我是好人，谁愿意互报项圈颜色？';
   }
   return pk(['我是好人，愿意分享信息','有人敢公开项圈吗？','大家有没有线索？','我们需要更多信息','我觉得有人在说谎','希望好人能赢']);
 }
@@ -490,6 +527,8 @@ async function gameLoop(){
     }
 
     await dialoguePhase();
+    if(checkWin())break;
+    await trialPhase();
     if(checkWin())break;
     await votePhase();
     if(checkWin())break;
@@ -554,19 +593,34 @@ async function votePhase(){
     if(p.mo){
       guess=p.cn;
     } else {
-      // Smart deduction: check if any public messages mentioned color names
-      let pubColors=[];
-      for(let o of alv()){
-        if(o.idx!==p.idx&&o.msg){
-          let cm=['红','金','蓝','绿','紫','粉','青'].filter(c=>o.msg.includes(c));
-          pubColors.push(...cm);
+      // Smart deduction: collect ALL mentions of this player's color from dialogue
+      let myColorMentions=[];
+      for(let o of S){
+        if(o.idx===p.idx)continue;
+        // Check if anyone told this player their color
+        // (Look at all messages that mention this player)
+        let allText=o.msg||'';
+        // Also check private chat info stored
+        // For simplicity: scan all alive players' last messages for mentions of this player's name + color
+        for(let c of CN){
+          if(allText.includes(p.short)&&allText.includes(c)){
+            myColorMentions.push(c);
+          }
         }
       }
       let data=PD[p.idx];
-      let insightBonus=data.in/100*0.3;
-      if(pubColors.length>0&&Math.random()<0.5+insightBonus){
-        guess=pk(pubColors);
+      let insightBonus=data.in/100*0.4;
+      // If multiple people said the same color, trust it
+      if(myColorMentions.length>=2){
+        // Majority vote on color
+        let colorCount={};
+        for(let c of myColorMentions)colorCount[c]=(colorCount[c]||0)+1;
+        let best=Object.entries(colorCount).sort((a,b)=>b[1]-a[1])[0][0];
+        guess=best;
+      } else if(myColorMentions.length===1&&Math.random()<0.6+insightBonus){
+        guess=myColorMentions[0];
       } else {
+        // Fallback: random guess (1/7 chance)
         guess=pk(CN);
       }
     }
@@ -617,6 +671,102 @@ async function votePhase(){
   phase='result';
 }
 
+async function trialPhase(){
+  phase='trial';updateUI();
+  if(isUlt||alvn()<=2)return; // no trial in ultimate or too few
+  log('♥♥♥ 红心审判阶段 · 可发动','l-sys');
+  
+  // AI decides whether to call for trial
+  let al=shuf([...alv()]);
+  let caller=null;
+  for(let p of al){
+    if(!running||gameOver)return;
+    let data=PD[p.idx];
+    if(p.mo){
+      // Mole rarely calls trial, only to deflect
+      if(Math.random()<0.12&&alvn()<=4){caller=p;break}
+    } else {
+      // Good player: more likely if high guts or insight
+      let chance=0.15;
+      if(data.g>75)chance+=0.15;
+      if(data.in>80)chance+=0.1;
+      if(alvn()<=5)chance+=0.1;
+      if(ndStreak>=2)chance+=0.15; // more urgent if close to losing
+      if(Math.random()<chance){caller=p;break}
+    }
+  }
+  
+  if(!caller){log('无人发动红心审判','l-sys');return}
+  
+  log('♥ '+caller.short+' 发动红心审判!','l-kill');
+  
+  // AI votes: try to identify the mole
+  let votes={};
+  let voters=[];
+  for(let p of alv()){
+    if(!running||gameOver)return;
+    await wait();
+    // Decide who to suspect
+    let target=null;
+    if(p.mo){
+      // Mole votes for a random good player
+      let goods=alv().filter(t=>!t.mo&&t.idx!==p.idx);
+      target=goods.length?pk(goods):pk(alv().filter(t=>t.idx!==p.idx));
+    } else {
+      // Good player: use insight + personality to guess
+      let data=PD[p.idx];
+      let suspects=alv().filter(t=>t.idx!==p.idx);
+      // Higher insight = smarter guess
+      if(data.in>80&&Math.random()<0.5){
+        // Try to pick the mole based on behavior patterns
+        // (simplified: just pick randomly, but with slight bias toward mole)
+        target=pk(suspects);
+      } else {
+        target=pk(suspects);
+      }
+    }
+    if(target){
+      votes[target.idx]=(votes[target.idx]||0)+1;
+      voters.push(p);
+      log('🗳 '+p.short+' 投票: '+target.short,'l-vote');
+    }
+  }
+  
+  // Count votes
+  let maxV=0,winnerIdx=-1,tie=false;
+  for(let idx in votes){
+    if(votes[idx]>maxV){maxV=votes[idx];winnerIdx=parseInt(idx);tie=false}
+    else if(votes[idx]===maxV)tie=true;
+  }
+  
+  let majority=Math.ceil(alv().length/2);
+  
+  if(tie||maxV===0||maxV<majority){
+    log('审判失败 · 票数不足或平局('+maxV+'/'+alv().length+')','l-sys');
+    return;
+  }
+  
+  // Trial passes! Check if voted target is the mole
+  let target=S[winnerIdx];
+  if(target&&target.mo){
+    log('🎉🎉🎉 猜对了! '+target.short+' 就是内鬼!','l-win');
+    endRound('good');
+  } else {
+    log('💀 猜错了! '+target.short+' 不是内鬼!','l-kill');
+    log('参与投票的人全部死亡!','l-kill');
+    for(let v of voters){
+      if(v.alive){
+        v.alive=false;
+        deathOrder++;
+        roundDeaths.push({idx:v.idx,name:v.short,order:deathOrder});
+        log('☠️ '+v.short+' 死亡','l-kill');
+      }
+    }
+    updateUI();
+    // Check if the wrongly accused also dies? No, only voters die
+  }
+}
+
 function checkWin(){
   let al=alv();
   let ms=al.filter(p=>p.mo),gs=al.filter(p=>!p.mo);
@@ -656,7 +806,9 @@ function endRound(winner){
 }
 
 // ============ CONTROLS ============
-function spdChg(d){spd=Math.max(0,Math.min(3,spd+d))}
+function spdChg(d){spd=Math.max(0,Math.min(3,spd+d));updateSpdBtns()}
+function setSpd(v){spd=v;updateSpdBtns()}
+function updateSpdBtns(){let btns=document.querySelectorAll('.spd-btn');btns.forEach((b,i)=>{b.style.borderColor=i===spd?'var(--gold)':'var(--border)';b.style.background=i===spd?'rgba(232,168,56,.15)':''})}
 function doPause(){paused=!paused;document.getElementById('BPT').textContent=paused?'▶ 恢复':'⏸ 暂停';if(!paused)resume()}
 function doReset(){
   running=false;gameOver=false;paused=false;roundNum=0;phase='idle';
