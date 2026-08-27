@@ -13,6 +13,7 @@ body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background
 @keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes heartbeat{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
 @keyframes danger{0%,100%{box-shadow:0 0 5px rgba(255,71,87,.2)}50%{box-shadow:0 0 25px rgba(255,71,87,.6)}}
+@keyframes ultimate{0%,100%{box-shadow:0 0 10px rgba(255,215,0,.3)}50%{box-shadow:0 0 30px rgba(255,215,0,.7)}}
 
 .hdr{background:linear-gradient(135deg,#0f0f2e,#1a1a3a);border-bottom:2px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
 .hdr-left{display:flex;align-items:center;gap:12px}
@@ -21,25 +22,26 @@ body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background
 .badge-phase{background:linear-gradient(135deg,var(--blue),var(--purple))}
 .wrap{display:flex;height:calc(100vh - 56px)}
 
-/* Main */
 .main{flex:1;padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
-.stats{display:grid;grid-template-template:repeat(4,1fr);grid-template-columns:repeat(4,1fr);gap:8px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 .stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;text-align:center}
 .stat .label{font-size:10px;color:var(--muted);margin-bottom:2px}
 .stat .value{font-size:18px;font-weight:900;color:var(--gold);font-family:monospace}
 .phase-banner{text-align:center;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px;font-weight:700;letter-spacing:2px;animation:fadeIn .5s;transition:all .5s}
 .phase-dialogue{background:linear-gradient(135deg,rgba(55,66,250,.12),rgba(10,10,42,.6));border-color:var(--blue);color:var(--blue)}
+.phase-vote{background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(42,10,42,.6));border-color:var(--purple);color:var(--purple)}
 .phase-trial{background:linear-gradient(135deg,rgba(255,71,87,.12),rgba(42,10,10,.6));border-color:var(--red);color:var(--red)}
 .phase-result{background:linear-gradient(135deg,rgba(255,215,0,.1),rgba(42,30,10,.6));border-color:var(--gold);color:var(--gold)}
 .phase-idle{background:rgba(255,255,255,.03);border-color:var(--border);color:var(--muted)}
+.phase-ultimate{background:linear-gradient(135deg,rgba(255,215,0,.15),rgba(255,71,87,.1));border-color:var(--gold);color:var(--gold);animation:ultimate 2s infinite}
 
-/* Player Cards */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}
 .card{background:linear-gradient(180deg,var(--card),#0a0a1a);border:1.5px solid var(--border);border-radius:12px;padding:10px;transition:all .3s;position:relative}
 .card:hover{border-color:var(--gold);transform:translateY(-1px)}
 .card.dead{opacity:.2;filter:grayscale(1);transform:none}
 .card.dead:hover{transform:none}
 .card.voting{animation:danger 1.5s infinite}
+.card.ultimate-card{animation:ultimate 2s infinite}
 .card .top{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;flex-shrink:0;border:2px solid rgba(255,255,255,.1)}
 .card .name{font-weight:800;font-size:12px;line-height:1.2}
@@ -48,10 +50,9 @@ body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background
 .collar-dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.2)}
 .card .chat-chance{font-size:10px;color:var(--muted);margin-top:3px}
 .card .chat-chance span{color:var(--gold);font-weight:700}
-.card .vote-badge{position:absolute;bottom:6px;right:6px;font-size:11px;padding:2px 6px;border-radius:6px;background:rgba(255,71,87,.15);color:var(--red);border:1px solid rgba(255,71,87,.3);font-weight:700}
+.card .score-display{font-size:11px;color:var(--gold);font-weight:700;margin-top:3px}
 .card .last-msg{font-size:9px;color:var(--muted);margin-top:3px;font-style:italic;line-height:1.3;max-height:28px;overflow:hidden}
 
-/* Log */
 .log-panel{width:360px;background:var(--card);border-left:2px solid var(--border);display:flex;flex-direction:column}
 .log-header{padding:10px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;color:var(--gold);display:flex;justify-content:space-between;align-items:center}
 .log-body{flex:1;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:2px}
@@ -59,9 +60,11 @@ body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background
 .log-system{background:rgba(255,215,0,.05);border-left-color:var(--gold);color:var(--gold)}
 .log-private{background:rgba(55,66,250,.06);border-left-color:var(--blue)}
 .log-public{background:rgba(168,85,247,.06);border-left-color:var(--purple);font-weight:700}
-.log-trial{background:rgba(255,71,87,.08);border-left-color:var(--red);color:var(--red);font-weight:700}
+.log-vote{background:rgba(6,214,160,.06);border-left-color:var(--cyan);color:var(--cyan)}
+.log-killed{background:rgba(255,71,87,.08);border-left-color:var(--red);color:var(--red);font-weight:700}
 .log-result{background:rgba(46,213,115,.06);border-left-color:var(--green)}
-.log-collar{background:rgba(6,214,160,.05);border-left-color:var(--cyan);color:var(--cyan)}
+.log-collar{background:rgba(168,85,247,.05);border-left-color:var(--purple);color:var(--purple)}
+.log-ultimate{background:rgba(255,215,0,.1);border-left-color:var(--gold);color:var(--gold);font-weight:700}
 .log-controls{padding:8px;border-top:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap}
 .btn{flex:1;min-width:44px;padding:7px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;text-align:center}
 .btn:hover:not(:disabled){border-color:var(--gold);background:rgba(255,215,0,.1)}
@@ -70,7 +73,6 @@ body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background
 .btn-danger{background:linear-gradient(135deg,var(--red),#c0392b);border-color:var(--red);color:#fff}
 .btn-danger:hover:not(:disabled){box-shadow:0 0 15px rgba(255,71,87,.4)}
 
-/* Overlays */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
 .intro-card{max-width:680px;width:95%;max-height:90vh;overflow-y:auto;background:linear-gradient(180deg,#1a1a3a,#0a0a1a);border:1.5px solid var(--border);border-radius:16px;padding:22px;animation:fadeIn .5s}
 .intro-card h2{text-align:center;font-size:20px;background:linear-gradient(135deg,var(--gold),#ffaa00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:14px}
@@ -97,7 +99,7 @@ body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background
 .collar-legend-dot{width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.2)}
 
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-@media(max-width:768px){.wrap{flex-direction:column}.log-panel{width:100%;height:35vh}.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){.wrap{flex-direction:column}.log-panel{width:100%;height:35vh}.stats{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
@@ -115,8 +117,9 @@ body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background
 <div class="stats">
 <div class="stat"><div class="label">轮次</div><div class="value" id="SBR">-</div></div>
 <div class="stat"><div class="label">存活</div><div class="value" id="SBA">7</div></div>
+<div class="stat"><div class="label">连续无死亡</div><div class="value" id="SND">0</div></div>
 <div class="stat"><div class="label">对话余量</div><div class="value" id="SBC">-</div></div>
-<div class="stat"><div class="label">审判</div><div class="value" id="SBT" style="font-size:14px">未发动</div></div>
+<div class="stat"><div class="label">模式</div><div class="value" id="SBM" style="font-size:12px">普通</div></div>
 </div>
 <div class="phase-banner phase-idle" id="BAN">点击开始游戏</div>
 <div class="grid" id="PGD"></div>
@@ -142,6 +145,7 @@ body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background
 <div class="rule-section">
 <h3>🎭 身份配置</h3>
 <div class="rule-row"><span class="rl">人数</span><span class="rv">7人，其中1人是内鬼</span></div>
+<div class="rule-row"><span class="rl">选手</span><span class="rv">ChatGPT-5.6 / Claude-Fable5 / deepseek-v4-pro / GLM-5.3 / Qwen3.8max / 豆包2.0 / Grok4.6</span></div>
 <div class="rule-row"><span class="rl">项圈</span><span class="rv">每人佩戴彩色项圈</span></div>
 <div class="rule-row"><span class="rl">普通人</span><span class="rv">能看到别人的项圈颜色，<b>看不到自己的</b></span></div>
 <div class="rule-row"><span class="rl">内鬼</span><span class="rv">能看到<b>所有人</b>的项圈颜色（含自己的）</span></div>
@@ -150,14 +154,20 @@ body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background
 <h3>💬 对话系统</h3>
 <div class="rule-row"><span class="rl">每轮机会</span><span class="rv">每人2次对话机会</span></div>
 <div class="rule-row"><span class="rl">私聊</span><span class="rv">消耗1次，仅目标可见</span></div>
-<div class="rule-row"><span class="rl">公开喊话</span><span class="rv">消耗2次，所有人可见</span></div>
+<div class="rule-row"><span class="rl">公开喊话</span><span class="rv">消耗2次，所有人可见（每轮只能1次）</span></div>
 </div>
 <div class="rule-section">
-<h3>♥ 红心审判</h3>
-<div class="rule-row"><span class="rl">发动</span><span class="rv">每轮只能发动1次，失败不计次数</span></div>
-<div class="rule-row"><span class="rl">投票</span><span class="rv">需要半数及以上通过</span></div>
-<div class="rule-row"><span class="rl">猜对</span><span class="rv">内鬼被揪出，好人阵营胜利！</span></div>
-<div class="rule-row"><span class="rl">猜错</span><span class="rv"><b style="color:var(--red)">参与投票的人全部死亡</b></span></div>
+<h3>🎯 项圈投票</h3>
+<div class="rule-row"><span class="rl">每轮结束</span><span class="rv">每人投票猜一个玩家的项圈颜色</span></div>
+<div class="rule-row"><span class="rl">猜对</span><span class="rv">被猜的人<b>爆炸死亡</b>（终极对决时获胜+1分）</span></div>
+<div class="rule-row"><span class="rl">猜错</span><span class="rv"><b style="color:var(--red)">投票者自己爆炸死亡</b></span></div>
+</div>
+<div class="rule-section">
+<h3>🏆 胜利条件</h3>
+<div class="rule-row"><span class="rl">好人胜利</span><span class="rv">连续4轮无人阵亡，或揪出内鬼</span></div>
+<div class="rule-row"><span class="rl">内鬼胜利</span><span class="rv">存活到最后 或 好人全灭</span></div>
+<div class="rule-row"><span class="rl">终极对决</span><span class="rv">仅剩3人时触发，猜对+1分猜错死</span></div>
+<div class="rule-row"><div class="rl">最终结算</div><span class="rv">仅剩1人时统计总分，<b>淘汰最后两名</b></span></div>
 </div>
 <div class="collar-legend" id="CLEG"></div>
 <button class="big-btn" onclick="startGame()">⚡ 开始游戏</button>
@@ -176,23 +186,24 @@ body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background
 
 <script>
 // ============ DATA ============
-const NAMES=['谋略家·曹操','义士·关羽','智者·诸葛亮','武圣·吕布','隐士·司马懿','医者·华佗','猛将·赵云'];
-const SHORT=['曹','关','诸','吕','司','华','赵'];
+const NAMES=['ChatGPT-5.6','Claude-Fable5','deepseek-v4-pro','GLM-5.3','Qwen3.8max','豆包2.0','Grok4.6'];
+const SHORT=['GPT','Claude','DS','GLM','Qwen','豆包','Grok'];
 const COLORS=['#ff4757','#ffd700','#3742fa','#2ed573','#a855f7','#ff6b81','#06d6a0'];
 const COLLAR_COLORS=['#ff4757','#ffd700','#3742fa','#2ed573','#a855f7','#ff6b81','#06d6a0'];
 const COLLAR_NAMES=['红','金','蓝','绿','紫','粉','青'];
-const PERSONALITY=['深谋远虑','热血义气','冷静观察','勇猛果敢','诡计多端','和平主义','均衡发展'];
+const PERSONALITY=['深谋远虑','热血冲动','冷静分析','诡计多端','均衡稳健','天真善良','激进冒险'];
 
 // ============ STATE ============
 let Players=[], roundNum=0, phase='idle', running=false, paused=false, speed=1, gameOver=false;
 let tm=null, pf=null, logCount=0, insiderIdx=-1;
 let SPD_MS=[1200,700,300,80];
-let trialUsed=false, totalDialogue=0;
+let noDeathStreak=0, isUltimate=false, ultimateWinnerIdx=-1;
+let voteResults=[]; // {voterIdx, targetIdx, guessColor, correct}
 
 // ============ PLAYER ============
 function makePlayer(i){
   return{idx:i,name:NAMES[i],color:COLORS[i],personality:PERSONALITY[i],
-    alive:true,chatChances:2,isInsider:false,
+    alive:true,chatChances:2,isInsider:false,score:0,
     collarColor:COLLAR_COLORS[i],collarName:COLLAR_NAMES[i],
     lastMsg:'',targetOf:[],votedBy:[]};
 }
@@ -200,7 +211,7 @@ function initPlayers(){Players=[];for(let i=0;i<7;i++)Players.push(makePlayer(i)
 function shuffle(a){for(let k=a.length-1;k>0;k--){let j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]];}return a;}
 function pick(a){return a[Math.floor(Math.random()*a.length)];}
 function alive(){return Players.filter(p=>p.alive);}
-function short(p){return p.name.split('·')[1]||p.name;}
+function short(p){return SHORT[p.idx]||p.name;}
 function aliveCount(){return alive().length;}
 
 // ============ LOG ============
@@ -217,14 +228,15 @@ function renderCards(){
   let g=document.getElementById('PGD');g.innerHTML='';
   for(let p of Players){
     let d=document.createElement('div');
-    let cls='card';if(!p.alive)cls+=' dead';
-    if(phase==='trial'&&!p.alive)cls+=' dead';
+    let cls='card';
+    if(!p.alive)cls+=' dead';
+    if(isUltimate&&p.alive)cls+=' ultimate-card';
     d.className=cls;
 
-    // Collar display: spectator sees all colors, but in game logic ordinary players can't see their own
+    // Collar
     let collarHtml='<div class="collar"><div class="collar-dot" style="background:'+p.collarColor+'"></div><span style="font-size:9px;color:'+p.collarColor+'">'+p.collarName+'</span></div>';
 
-    // Role tag
+    // Role tag (only show when game over)
     let roleTag='';
     if(gameOver){
       roleTag='<div class="role-tag" style="background:'+(p.isInsider?'rgba(255,71,87,.15)':'rgba(46,213,115,.15)')+';color:'+(p.isInsider?'var(--red)':'var(--green)')+';border:1px solid '+(p.isInsider?'rgba(255,71,87,.3)':'rgba(46,213,115,.3)')+'">'+(p.isInsider?'🎭 内鬼':'✅ 好人')+'</div>';
@@ -233,10 +245,13 @@ function renderCards(){
     // Chat chances
     let chatHtml=p.alive?'<div class="chat-chance">对话余量: <span>'+p.chatChances+'</span>/2</div>':'';
 
+    // Score
+    let scoreHtml=p.alive?'<div class="score-display">⭐ '+p.score+' 分</div>':'';
+
     // Last message
     let msgHtml=p.lastMsg?'<div class="last-msg">"'+p.lastMsg+'"</div>':'';
 
-    d.innerHTML='<div class="top"><div class="avatar" style="background:'+p.color+'22;border-color:'+p.color+'">'+SHORT[p.idx]+'</div><div style="flex:1"><div class="name" style="color:'+p.color+'">'+p.name+'</div>'+roleTag+'</div>'+collarHtml+'</div>'+chatHtml+msgHtml;
+    d.innerHTML='<div class="top"><div class="avatar" style="background:'+p.color+'22;border-color:'+p.color+'">'+SHORT[p.idx].charAt(0)+'</div><div style="flex:1"><div class="name" style="color:'+p.color+'">'+p.name+'</div>'+roleTag+'</div>'+collarHtml+'</div>'+chatHtml+scoreHtml+msgHtml;
     g.appendChild(d);
   }
 }
@@ -245,26 +260,30 @@ function updateBar(){
   let al=aliveCount();
   document.getElementById('SBR').textContent=roundNum>0?roundNum:'-';
   document.getElementById('SBA').textContent=al;
+  document.getElementById('SND').textContent=noDeathStreak+'/4';
   let totalChats=alive().reduce((s,p)=>s+p.chatChances,0);
   document.getElementById('SBC').textContent=totalChats;
-  document.getElementById('SBT').textContent=trialUsed?'已发动':'未发动';
+  document.getElementById('SBM').textContent=isUltimate?'🔥 终极':'普通';
 
   let pb=document.getElementById('BAN');
   let badge=document.getElementById('PHBADGE');
-  let phaseNames={'idle':'等待','dialogue':'对话阶段','trial':'红心审判','result':'结算','over':'结束'};
 
   if(gameOver){
     pb.innerHTML='🏆 游戏结束';pb.className='phase-banner phase-result';
     badge.textContent='结束';
+  } else if(isUltimate){
+    pb.innerHTML='🔥🔥🔥 第'+roundNum+'轮 · 终极对决！仅剩3人！';pb.className='phase-banner phase-ultimate';
+    badge.textContent='🔥 终极';badge.className='badge badge-phase';
+    badge.style.background='linear-gradient(135deg,var(--gold),var(--red))';
   } else if(phase==='dialogue'){
     pb.innerHTML='💬 第'+roundNum+'轮 · 对话阶段';pb.className='phase-banner phase-dialogue';
     badge.textContent='💬 对话';badge.className='badge badge-phase';
-  } else if(phase==='trial'){
-    pb.innerHTML='♥ 第'+roundNum+'轮 · 红心审判';pb.className='phase-banner phase-trial';
-    badge.textContent='♥ 审判';badge.className='badge badge-phase';
-    badge.style.background='linear-gradient(135deg,var(--red),#c0392b)';
+  } else if(phase==='vote'){
+    pb.innerHTML='🎯 第'+roundNum+'轮 · 项圈投票';pb.className='phase-banner phase-vote';
+    badge.textContent='🎯 投票';badge.className='badge badge-phase';
+    badge.style.background='linear-gradient(135deg,var(--purple),var(--blue))';
   } else if(running){
-    pb.innerHTML='⏳ '+phaseNames[phase];pb.className='phase-banner phase-idle';
+    pb.innerHTML='⏳ 处理中...';pb.className='phase-banner phase-idle';
   } else if(roundNum>0){
     pb.innerHTML='⏳ 上一轮已结束';pb.className='phase-banner phase-idle';
   } else {
@@ -279,27 +298,30 @@ function resume(){if(pf){let f=pf;pf=null;f();}}
 function genPrivateMsg(sender,target){
   let s=sender,t=target;
   if(s.isInsider){
-    // Insider tries to deflect suspicion, subtly mislead
     let msgs=[
       '我觉得'+short(pick(alive().filter(p=>p.idx!==s.idx&&p.idx!==t.idx)))+'的项圈颜色有点奇怪',
       '你有没有注意到谁的行为不太对？',
       '我信任你，我们互保吧',
       '我看到一些线索，但还不确定',
-      '先别急着下结论，再观察一轮'
+      '先别急着下结论，再观察一轮',
+      '你的项圈颜色我看到了，别担心',
+      '有人在故意混淆视听，小心'
     ];
-    // If target is also insider (impossible in 7p1i but just in case)
     return pick(msgs);
   }
-  // Good player
+  let suspects=alive().filter(p=>p.idx!==s.idx).map(p=>short(p));
+  let randomSuspect=pick(suspects);
   let msgs=[
     '你能看到我的项圈颜色吗？我看不到自己的',
     '我怀疑有人在伪装，你觉得是谁？',
     '你觉得谁最可疑？',
     '我的项圈是什么颜色？告诉我',
     '我们需要更多信息，你有什么线索？',
-    '我觉得' + short(pick(alive().filter(p=>p.idx!==s.idx&&p.idx!==t.idx))) + '不太对劲',
+    '我觉得'+randomSuspect+'不太对劲',
     '你能帮我确认一下我的项圈颜色吗？',
-    '下一轮我们合作吧'
+    '下一轮我们合作吧',
+    '我注意到有人的发言前后矛盾',
+    '你的项圈是什么颜色？我帮你看看我的'
   ];
   return pick(msgs);
 }
@@ -307,23 +329,32 @@ function genPrivateMsg(sender,target){
 function genPublicMsg(sender){
   let s=sender;
   if(s.isInsider){
+    let others=alive().filter(p=>p.idx!==s.idx).map(p=>short(p));
+    let target=pick(others);
     let msgs=[
       '我觉得大家应该多分享信息',
       '不要互相猜疑，冷静分析',
       '有人在故意混淆视听',
       '我看到一些可疑的行为',
-      '我们应该团结起来找出内鬼'
+      '我们应该团结起来找出内鬼',
+      '我怀疑'+target+'，他的行为很可疑',
+      '我愿意公开我的项圈颜色来证明清白',
+      '谁敢跟我互报项圈颜色？'
     ];
     return pick(msgs);
   }
+  let others=alive().filter(p=>p.idx!==s.idx).map(p=>short(p));
+  let target=pick(others);
   let msgs=[
     '我是好人，我愿意分享信息',
-      '有人敢公开自己的项圈颜色吗？',
-      '我觉得应该多交流',
-      '大家有没有什么线索？',
-      '我们需要更多信息才能判断',
-      '我不确定谁是内鬼，但我觉得有人在说谎',
-      '希望好人能赢'
+    '有人敢公开自己的项圈颜色吗？',
+    '我觉得应该多交流',
+    '大家有没有什么线索？',
+    '我们需要更多信息才能判断',
+    '我不确定谁是内鬼，但我觉得有人在说谎',
+    '希望好人能赢',
+    '我怀疑'+target+'，请其他人注意',
+    '我愿意先公开自己的项圈颜色'
   ];
   return pick(msgs);
 }
@@ -333,7 +364,7 @@ async function startGame(){
   document.getElementById('IOVL').style.display='none';
   initPlayers();
   roundNum=0;running=true;paused=false;gameOver=false;
-  logCount=0;totalDialogue=0;
+  logCount=0;noDeathStreak=0;isUltimate=false;ultimateWinnerIdx=-1;
   LBX.innerHTML='';
 
   // Assign insider
@@ -351,7 +382,7 @@ async function startGame(){
 
   // Show collar assignments
   for(let p of Players){
-    log('项圈分配: '+SHORT[p.idx]+' '+short(p)+' → '+p.collarName+'色项圈','log-collar');
+    log('项圈分配: '+short(p)+' '+p.name+' → '+p.collarName+'色项圈','log-collar');
   }
 
   renderCards();updateBar();
@@ -361,7 +392,6 @@ async function startGame(){
 async function gameLoop(){
   while(running&&!gameOver){
     roundNum++;
-    trialUsed=false;
 
     // Reset chat chances
     for(let p of alive())p.chatChances=2;
@@ -369,6 +399,13 @@ async function gameLoop(){
 
     log('═══════════════════════════','log-system');
     log('第'+roundNum+'轮开始 · 存活'+aliveCount()+'人','log-system');
+
+    // Check if ultimate mode (3 alive)
+    if(aliveCount()===3&&!isUltimate){
+      isUltimate=true;
+      log('🔥🔥🔥 进入终极对决！仅剩3人！','log-ultimate');
+      log('终极规则：猜对+1分，猜错死亡不扣分','log-ultimate');
+    }
 
     // Show collar info to each player
     for(let p of alive()){
@@ -383,18 +420,29 @@ async function gameLoop(){
 
     // Phase 1: Dialogue
     await dialoguePhase();
-
-    // Check win after dialogue (if someone figures it out via info)
     if(checkWin())break;
 
-    // Phase 2: Red Heart Trial
-    await trialPhase();
-
+    // Phase 2: Collar Vote
+    await collarVotePhase();
     if(checkWin())break;
+
+    // Check for 4 consecutive no-death rounds
+    if(noDeathStreak>=4){
+      log('═══════════════════════════','log-result');
+      log('🎉🎉🎉 连续4轮无人阵亡！好人阵营胜利！','log-result');
+      log('内鬼 '+Players[insiderIdx].name+' 失败!','log-result');
+      endGame('good');
+      break;
+    }
 
     // Check if game should continue
     if(aliveCount()<=1){
-      endGame('insider');
+      if(aliveCount()===1){
+        let survivor=alive()[0];
+        log('═══════════════════════════','log-result');
+        log('🏆 最终幸存者: '+survivor.name+' !','log-result');
+        endGame(survivor.isInsider?'insider':'good');
+      }
       break;
     }
 
@@ -407,30 +455,26 @@ async function dialoguePhase(){
   log('💬 进入对话阶段 · 每人2次机会','log-system');
 
   let al=shuffle([...alive()]);
-  totalDialogue=0;
+  let totalDialogue=0;
 
   for(let p of al){
     if(!running||gameOver)return;
 
-    // AI decides how to use chat chances
     while(p.chatChances>0&&p.alive){
       if(!running||gameOver)return;
 
-      // Decide: private or public?
-      let usePublic=p.chatChances>=2&&Math.random()<0.3;
+      let usePublic=p.chatChances>=2&&Math.random()<0.25;
       let usePrivate=p.chatChances>=1&&!usePublic;
 
       if(usePublic&&p.chatChances>=2){
-        // Public shout
         p.chatChances-=2;
         let msg=genPublicMsg(p);
         p.lastMsg=msg;
-        log('📢 '+SHORT[p.idx]+' '+short(p)+'[公开]: '+msg,'log-public');
+        log('📢 '+short(p)+' '+p.name+'[公开]: '+msg,'log-public');
         totalDialogue++;
         await wait();renderCards();
-        break; // public uses all remaining chances this turn
+        break;
       } else if(usePrivate&&p.chatChances>=1){
-        // Private chat
         p.chatChances-=1;
         let targets=alive().filter(t=>t.idx!==p.idx);
         if(targets.length===0)break;
@@ -438,7 +482,7 @@ async function dialoguePhase(){
         let msg=genPrivateMsg(p,target);
         p.lastMsg='[私聊→'+short(target)+'] '+msg;
         target.targetOf.push({from:short(p),msg:msg});
-        log('🔒 '+SHORT[p.idx]+' '+short(p)+' → '+SHORT[target.idx]+' '+short(target)+'[私聊]: '+msg,'log-private');
+        log('🔒 '+short(p)+' '+p.name+' → '+short(target)+' '+target.name+'[私聊]: '+msg,'log-private');
         totalDialogue++;
         await wait();renderCards();
       } else {
@@ -450,128 +494,95 @@ async function dialoguePhase(){
   log('对话阶段结束 · 共'+totalDialogue+'次对话','log-system');
 }
 
-async function trialPhase(){
-  phase='trial';updateBar();renderCards();
+async function collarVotePhase(){
+  phase='vote';updateBar();renderCards();
+  log('🎯 进入项圈投票阶段 · 猜对爆炸猜错自己死','log-system');
 
-  let al=alive();
-  if(al.length<=2){
-    log('存活人数不足，无法发动红心审判','log-system');
-    return;
-  }
-
-  // AI decides whether to call for trial
-  let caller=null;
-  let shuffled=shuffle([...al]);
-
-  for(let p of shuffled){
-    if(!running||gameOver)return;
-    if(p.isInsider){
-      // Insider rarely calls trial unless they think they can manipulate
-      if(Math.random()<0.15&&al.length<=4){
-        caller=p;break;
-      }
-    } else {
-      // Good player: more likely to call if they have strong suspicion
-      let suspicion=0;
-      if(p.personality==='深谋远虑'||p.personality==='冷静观察')suspicion+=0.3;
-      if(al.length<=4)suspicion+=0.2;
-      if(roundNum>=3)suspicion+=0.15;
-      if(Math.random()<suspicion){
-        caller=p;break;
-      }
-    }
-  }
-
-  if(!caller){
-    log('无人发动红心审判，本轮结束','log-system');
-    phase='result';return;
-  }
-
-  log('♥♥♥ '+SHORT[caller.idx]+' '+short(pick(al))+' 发动红心审判!','log-trial');
-
-  // Voting phase
-  let votes={};
-  let voteTargets={};
-  let voters=[];
+  let al=shuffle([...alive()]);
+  voteResults=[];
+  let deathsThisRound=0;
 
   for(let p of al){
     if(!running||gameOver)return;
-    await wait();
+    if(!p.alive)continue;
 
-    // AI votes: try to identify the insider
-    let target=null;
+    // AI decides what color to guess for their own collar
+    let guessColor;
+    // (Can't see own collar, must deduce from dialogue)
+    let guessColor;
     if(p.isInsider){
-      // Insider votes for a good player to deflect
-      let goodTargets=alive().filter(t=>!t.isInsider);
-      target=goodTargets.length>0?pick(goodTargets):pick(alive().filter(t=>t.idx!==p.idx));
+      // Insider can see own collar, always correct
+      guessColor=p.collarName;
     } else {
-      // Good player: vote based on suspicion
-      // Use collar info + dialogue to make decision
-      let suspects=alive().filter(t=>t.idx!==p.idx);
-      // Simple heuristic: random with bias
-      target=pick(suspects);
-    }
-
-    if(target){
-      votes[target.idx]=(votes[target.idx]||0)+1;
-      voteTargets[target.idx]=target;
-      voters.push(p);
-      log('🗳 '+SHORT[p.idx]+' '+short(p)+' 投票: '+short(target),'log-trial');
-      renderCards();
-    }
-  }
-
-  // Count votes
-  let maxVotes=0,winnerIdx=-1,tie=false;
-  for(let idx in votes){
-    if(votes[idx]>maxVotes){maxVotes=votes[idx];winnerIdx=parseInt(idx);tie=false;}
-    else if(votes[idx]===maxVotes)tie=true;
-  }
-
-  let majority=Math.ceil(al.length/2);
-
-  if(tie||maxVotes===0){
-    log('投票平局或无人投票，审判失败','log-trial');
-    log('审判失败，不计入次数','log-system');
-    phase='result';return;
-  }
-
-  if(maxVotes<majority){
-    log('票数不足半数('+maxVotes+'/'+al.length+')，审判失败','log-trial');
-    log('审判失败，不计入次数','log-system');
-    phase='result';return;
-  }
-
-  // Trial passes! Check if the voted target is the insider
-  let target=voteTargets[winnerIdx];
-  if(target&&target.isInsider){
-    // CORRECT! Good wins!
-    log('🎉🎉🎉 猜对了！'+short(target)+' 就是内鬼!','log-result');
-    log('好人阵营胜利!','log-result');
-    endGame('good');
-  } else {
-    // WRONG! All voters die
-    log('💀💀💀 猜错了！'+short(target)+' 不是内鬼!','log-trial');
-    log('参与投票的人全部死亡!','log-trial');
-    for(let v of voters){
-      if(v.alive){
-        v.alive=false;
-        log('☠️ '+short(v)+' 死亡','log-trial');
+      // Good player guesses own color based on what others told them
+      // Use intelligence: check if anyone mentioned their color in private chat
+      let mentionedColors=[];
+      for(let t of alive()){
+        for(let msg of t.targetOf){
+          if(msg.from===short(p)){
+            // Someone told this player their color
+            let colorWords=['红','金','蓝','绿','紫','粉','青'];
+            for(let cw of colorWords){
+              if(msg.msg.includes(cw+'色')||msg.msg.includes(cw)){
+                mentionedColors.push(cw);
+              }
+            }
+          }
+        }
+      }
+      if(mentionedColors.length>0&&Math.random()<0.7){
+        guessColor=pick(mentionedColors);
+      } else {
+        // Random guess based on what others said in public
+        guessColor=pick(COLLAR_NAMES);
       }
     }
+
+    let correct=(guessColor===p.collarName);
+
+    voteResults.push({voterIdx:p.idx,targetIdx:target.idx,guessColor:guessColor,correct:correct});
+
+    log('🗳 '+short(p)+' '+p.name+' → 猜自己是 '+guessColor+'色','log-vote');
+    await wait();renderCards();
+
+    if(correct){
+      // Correct guess: survived!
+      if(isUltimate){
+        p.score+=1;
+        log('🎯 '+short(p)+' 猜对了！自己的项圈确实是 '+guessColor+'色！终极+1分!','log-vote');
+      } else {
+        log('🎯 '+short(p)+' 猜对了！自己的项圈确实是 '+guessColor+'色！安全过关!','log-vote');
+      }
+    } else {
+      // Wrong guess: voter explodes!
+      p.alive=false;
+      deathsThisRound++;
+      log('❌ '+short(p)+' '+p.name+' 猜错了！自己的项圈是 '+p.collarName+'色，不是 '+guessColor+'色!','log-killed');
+      log('💥 '+short(p)+' '+p.name+' 爆炸死亡!','log-killed');
+    }
+
     renderCards();await wait();
-
-    // Check win after deaths
-    if(checkWin())return;
-
-    // If insider is among dead voters, check
-    if(target)target.alive=false; // the wrongly accused also dies? No, in the rules "参与投票的全死" means voters die
-    // Actually re-reading: "猜错参与投票的全死" - only voters die, the accused survives
-    // Let me fix: the accused should NOT die
-    if(target&&!target.isInsider){target.alive=true;} // restore
-
-    phase='result';
   }
+
+  // Update no-death streak
+  if(deathsThisRound===0){
+    noDeathStreak++;
+    log('本轮无人阵亡 · 连续无死亡: '+noDeathStreak+'/4','log-system');
+    if(noDeathStreak>=4){
+      log('⚠️ 再无死亡1轮好人就赢了！','log-system');
+    }
+  } else {
+    noDeathStreak=0;
+    log('本轮'+deathsThisRound+'人阵亡 · 连续无死亡重置为0','log-system');
+  }
+
+  // Check for scores at end
+  let survivors=alive();
+  if(survivors.length>0){
+    log('当前积分: '+survivors.map(p=>short(p)+'='+p.score+'分').join(' | '),'log-system');
+  }
+
+  phase='result';
 }
 
 function checkWin(){
@@ -580,13 +591,15 @@ function checkWin(){
   let goods=al.filter(p=>!p.isInsider);
 
   if(insiders.length===0){
+    log('🎉 内鬼已被消灭！好人胜利!','log-result');
     endGame('good');return true;
   }
-  if(insiders.length>=goods.length){
+  if(insiders.length>=goods.length&&goods.length>0){
+    log('💀 内鬼数量占优！内鬼胜利!','log-trial');
     endGame('insider');return true;
   }
-  if(al.length<=1){
-    endGame(al[0].isInsider?'insider':'good');return true;
+  if(al.length===0){
+    endGame('draw');return true;
   }
   return false;
 }
@@ -602,25 +615,42 @@ function endGame(winner){
     title.textContent='🎉 好人阵营胜利!';
     title.style.color='var(--green)';
     log('═══════════════════════════','log-result');
-    log('🎉🎉🎉 好人阵营胜利! 内鬼被揪出!','log-result');
-  } else {
+    log('🎉🎉🎉 好人阵营胜利!','log-result');
+  } else if(winner==='insider'){
     title.textContent='🐺 内鬼获胜!';
     title.style.color='var(--red)';
-    log('═══════════════════════════','log-trial');
-    log('💀 内鬼获胜! 好人阵营失败!','log-trial');
+    log('═══════════════════════════','log-killed');
+    log('💀 内鬼获胜! 好人阵营失败!','log-killed');
+  } else {
+    title.textContent='⚖️ 平局!';
+    title.style.color='var(--gold)';
   }
 
-  // Reveal all roles
+  // Final scoring: sort by score, eliminate last 2
+  let allPlayers=[...Players].sort((a,b)=>b.score-a.score);
+  let eliminated2=allPlayers.slice(-2).map(p=>short(p)+' '+p.name);
+  log('📊 最终积分排名:','log-result');
+  allPlayers.forEach((p,i)=>{
+    let medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'  ';
+    let eliminated=i>=allPlayers.length-2?' ❌ 淘汰':'';
+    log(medal+' '+(i+1)+'. '+short(p)+' '+p.name+' - '+p.score+'分'+eliminated+(p.isInsider?' [内鬼]':''),'log-result');
+  });
+  log('淘汰最后两名: '+eliminated2.join(', '),'log-killed');
+
+  // Build result display
   let fr=document.getElementById('FRK');fr.innerHTML='';
-  for(let p of Players){
+  allPlayers.forEach((p,i)=>{
     let status=p.alive?'✅ 存活':'💀 死亡';
     let roleColor=p.isInsider?'var(--red)':'var(--green)';
     let roleName=p.isInsider?'内鬼':'好人';
-    fr.innerHTML+='<div class="rank-item"><span class="rank-name" style="color:'+p.color+'">'+SHORT[p.idx]+' '+p.name+'</span><span class="rank-role" style="background:'+(p.isInsider?'rgba(255,71,87,.15)':'rgba(46,213,115,.15)')+';color:'+roleColor+';border:1px solid '+(p.isInsider?'rgba(255,71,87,.3)':'rgba(46,213,115,.3)')+'">'+roleName+'</span><span style="font-size:10px;margin-left:6px;color:'+(p.alive?'var(--green)':'var(--red)')+'">'+status+'</span></div>';
-  }
+    let medal=i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':'';
+    let eliminated=i>=allPlayers.length-2;
+    fr.innerHTML+='<div class="rank-item" style="'+(eliminated?'opacity:.5':'')+'"><span class="rank-name" style="color:'+(eliminated?'var(--red)':p.color)+'">'+medal+(i+1)+'. '+p.name+' <span style="font-size:10px;color:var(--gold)">'+p.score+'分</span></span><span class="rank-role" style="background:'+(p.isInsider?'rgba(255,71,87,.15)':'rgba(46,213,115,.15)')+';color:'+roleColor+';border:1px solid '+(p.isInsider?'rgba(255,71,87,.3)':'rgba(46,213,115,.3)')+'">'+roleName+'</span><span style="font-size:10px;margin-left:6px;color:'+(eliminated?'var(--red)':'var(--green)')+'">'+(eliminated?'淘汰':status)+'</span></div>';
+  });
 
   let info='内鬼: '+Players[insiderIdx].name+' ('+Players[insiderIdx].collarName+'色项圈)<br>';
-  info+='共进行 '+roundNum+' 轮 · '+totalDialogue+' 次对话';
+  info+='共进行 '+roundNum+' 轮<br>';
+  info+='淘汰: '+eliminated2.join(' & ');
   document.getElementById('TRV').innerHTML=info;
   document.getElementById('ROVL').style.display='flex';
   renderCards();updateBar();
@@ -631,6 +661,7 @@ function spdChg(d){speed=Math.max(0,Math.min(3,speed+d));}
 function doPause(){paused=!paused;document.getElementById('BPT').textContent=paused?'▶':'⏸';if(!paused)resume();}
 function doReset(){
   running=false;gameOver=false;paused=false;roundNum=0;phase='idle';
+  noDeathStreak=0;isUltimate=false;ultimateWinnerIdx=-1;
   if(tm){clearTimeout(tm);tm=null;}pf=null;
   document.getElementById('ROVL').style.display='none';
   document.getElementById('IOVL').style.display='flex';
@@ -646,7 +677,6 @@ function doReset(){
 // ============ INIT ============
 window.onload=function(){
   initPlayers();renderCards();updateBar();
-  // Build collar legend
   let leg=document.getElementById('CLEG');
   for(let i=0;i<7;i++){
     leg.innerHTML+='<div class="collar-legend-item"><div class="collar-legend-dot" style="background:'+COLLAR_COLORS[i]+'"></div>'+COLLAR_NAMES[i]+'色</div>';
