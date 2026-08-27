@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI博弈论 · 囚徒困境</title>
+<style>
+:root{--bg:#0a0a1a;--card:#12122a;--border:#2a2a5a;--gold:#ffd700;--red:#ff4757;--blue:#3742fa;--green:#2ed573;--purple:#a855f7;--cyan:#06d6a0;--text:#e8e8f0;--muted:#6b7280;--glass:rgba(255,255,255,.03)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Microsoft YaHei','PingFang SC',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 5px rgba(255,215,0,.2)}50%{box-shadow:0 0 20px rgba(255,215,0,.5)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes glow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.3)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+
+.hdr{background:linear-gradient(135deg,#0f0f2e,#1a1a3a);border-bottom:2px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(10px)}
+.hdr-left{display:flex;align-items:center;gap:12px}
+.hdr h1{font-size:20px;font-weight:900;background:linear-gradient(135deg,var(--gold),#ffaa00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none}
+.badge{background:linear-gradient(135deg,var(--red),#c0392b);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:#fff;letter-spacing:1px}
+.wrap{display:flex;height:calc(100vh - 56px)}
+
+/* Main Area */
+.main{flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;transition:all .3s}
+.stat:hover{border-color:var(--gold);transform:translateY(-1px)}
+.stat .label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.stat .value{font-size:20px;font-weight:900;color:var(--gold);font-family:monospace}
+.phase-banner{text-align:center;padding:12px;background:linear-gradient(135deg,rgba(55,66,250,.15),rgba(168,85,247,.15));border:1px solid var(--border);border-radius:10px;font-size:16px;font-weight:700;letter-spacing:2px;animation:fadeIn .5s}
+
+/* Player Cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.card{background:linear-gradient(180deg,var(--card),#0a0a1a);border:1.5px solid var(--border);border-radius:12px;padding:12px;transition:all .4s;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0;opacity:.8}
+.card:hover{transform:translateY(-2px);border-color:var(--gold)}
+.card.dead{opacity:.25;filter:grayscale(1);transform:none}
+.card.dead:hover{transform:none}
+.card.thinking{border-color:var(--blue);animation:pulse 1.5s infinite}
+.card .top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;flex-shrink:0;border:2px solid rgba(255,255,255,.1)}
+.card .name{font-weight:800;font-size:13px;line-height:1.2}
+.card .trait-tag{font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700;display:inline-block;margin-top:2px}
+.card .score{position:absolute;top:10px;right:12px;font-size:22px;font-weight:900;font-family:monospace}
+.card .status{font-size:10px;font-weight:700;margin-left:auto}
+.card .stats-row{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.mini-stat{font-size:9px;padding:1px 4px;border-radius:3px;background:rgba(255,255,255,.05);color:var(--muted)}
+.card .gesture{font-size:16px;text-align:center;margin:4px 0;animation:fadeIn .3s}
+.card .alliance-badge{position:absolute;bottom:6px;right:6px;font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(46,213,115,.15);color:var(--green);border:1px solid rgba(46,213,115,.3);font-weight:700}
+.radar{width:100%;height:60px;display:block;margin-top:4px}
+
+/* Log Panel */
+.log-panel{width:380px;background:var(--card);border-left:2px solid var(--border);display:flex;flex-direction:column}
+.log-header{padding:10px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;color:var(--gold);display:flex;justify-content:space-between;align-items:center}
+.log-body{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:3px}
+.log-entry{padding:5px 10px;border-radius:6px;font-size:11px;line-height:1.5;border-left:3px solid transparent;animation:slideIn .3s}
+.log-ts{background:rgba(255,215,0,.06);border-left-color:var(--gold);color:var(--gold)}
+.log-dlg{background:rgba(55,66,250,.06);border-left-color:var(--blue)}
+.log-act{background:rgba(46,213,115,.06);border-left-color:var(--green)}
+.log-kill{background:rgba(255,71,87,.1);border-left-color:var(--red);color:var(--red);font-weight:700}
+.log-phase{background:rgba(168,85,247,.08);border-left-color:var(--purple);color:var(--purple);font-weight:700}
+.log-result{background:rgba(255,215,0,.1);border-left-color:var(--gold);color:var(--gold);font-weight:700}
+.log-alliance{background:rgba(46,213,115,.08);border-left-color:var(--green)}
+.log-info{background:rgba(6,214,160,.06);border-left-color:var(--cyan)}
+.log-controls{padding:8px;border-top:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap}
+.btn{flex:1;min-width:48px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;text-align:center}
+.btn:hover:not(:disabled){border-color:var(--gold);background:rgba(255,215,0,.1)}
+.btn:disabled{opacity:.25;cursor:not-allowed}
+.btn-primary{background:linear-gradient(135deg,var(--red),#c0392b);border-color:var(--red);color:#fff;letter-spacing:2px}
+.btn-primary:hover:not(:disabled){box-shadow:0 0 15px rgba(255,71,87,.4);transform:translateY(-1px)}
+
+/* Overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.intro-card{max-width:700px;width:95%;max-height:90vh;overflow-y:auto;background:linear-gradient(180deg,#1a1a3a,#0a0a1a);border:1.5px solid var(--border);border-radius:16px;padding:24px;animation:fadeIn .5s}
+.intro-card h2{text-align:center;font-size:22px;background:linear-gradient(135deg,var(--gold),#ffaa00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px}
+.rule-section{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px}
+.rule-section h3{padding:8px 14px;background:linear-gradient(135deg,rgba(55,66,250,.2),rgba(168,85,247,.2));color:var(--gold);font-size:13px}
+.rule-row{display:flex;justify-content:space-between;padding:6px 14px;border-bottom:1px solid rgba(42,42,90,.3);font-size:12px}
+.rule-row:last-child{border-bottom:none}
+.rule-row .rl{color:var(--muted)}.rule-row .rv{color:var(--text);font-weight:700}
+.player-preview{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin:12px 0}
+.pp{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:8px;font-size:10px}
+.pp .ppn{font-weight:800;font-size:12px;margin-bottom:3px}
+.big-btn{display:block;width:100%;background:linear-gradient(135deg,var(--red),#c0392b);color:#fff;border:2px solid var(--gold);padding:14px;font-size:18px;font-weight:900;border-radius:12px;cursor:pointer;letter-spacing:6px;margin-top:16px;transition:all .3s}
+.big-btn:hover{box-shadow:0 0 30px rgba(255,71,87,.5);transform:translateY(-2px)}
+.radar-compare{width:100%;height:200px;margin:12px 0}
+
+/* Result Overlay */
+.result-card{max-width:500px;width:95%;text-align:center;background:linear-gradient(180deg,#1a1a3a,#0a0a1a);border:2px solid var(--gold);border-radius:16px;padding:24px;animation:fadeIn .5s}
+.result-card h2{color:var(--gold);font-size:20px;margin-bottom:12px}
+.rank-list{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:12px 0;text-align:left}
+.rank-item{display:flex;justify-content:space-between;padding:8px 14px;border-bottom:1px solid rgba(42,42,90,.3);font-size:13px;align-items:center}
+.rank-item:first-child{background:rgba(255,215,0,.08)}
+.rank-num{width:24px;font-weight:900;color:var(--gold)}
+.rank-medal{font-size:16px;margin-right:4px}
+.rank-name{flex:1;font-weight:700}
+.rank-score{font-family:monospace;font-weight:900;color:var(--gold);font-size:15px}
+.restart-btn{background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border:2px solid rgba(255,255,255,.2);padding:10px 30px;font-size:14px;font-weight:700;border-radius:10px;cursor:pointer;margin-top:12px;transition:all .3s}
+.restart-btn:hover{transform:translateY(-2px);box-shadow:0 0 20px rgba(55,66,250,.5)}
+
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+@media(max-width:768px){.wrap{flex-direction:column}.log-panel{width:100%;height:40vh}.stats{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+<div class="hdr-left">
+<h1>⚡ AI博弈论 · 囚徒困境</h1>
+<span class="badge">裁判观战室</span>
+</div>
+<div style="font-size:12px;color:var(--muted)">v2.0 · 智能AI博弈</div>
+</div>
+
+<div class="wrap">
+<!-- Main Area -->
+<div class="main">
+<div class="stats">
+<div class="stat"><div class="label">局数</div><div class="value" id="SBG">-</div></div>
+<div class="stat"><div class="label">回合</div><div class="value" id="SBR">-</div></div>
+<div class="stat"><div class="label">存活</div><div class="value" id="SBA">7</div></div>
+<div class="stat"><div class="label">结盟</div><div class="value" id="SBL">0</div></div>
+<div class="stat"><div class="label">阶段</div><div class="value" id="SBP" style="font-size:14px">等待</div></div>
+</div>
+<div class="phase-banner" id="BAN">点击开战按钮开始游戏</div>
+<div class="grid" id="PGD"></div>
+</div>
+
+<!-- Log Panel -->
+<div class="log-panel">
+<div class="log-header"><span>📋 实时日志</span><span id="LGC" style="font-size:11px;color:var(--muted)">0</span></div>
+<div class="log-body" id="LBX"></div>
+<div class="log-controls">
+<button class="btn btn-primary" id="BS" onclick="startGame()">⚔ 开战</button>
+<button class="btn" id="BSP" onclick="spdChg(1)" disabled>⏩ 加速</button>
+<button class="btn" id="BSL" onclick="spdChg(-1)" disabled>⏪ 减速</button>
+<button class="btn" id="BPT" onclick="doPause()" disabled>⏸ 暂停</button>
+<button class="btn" onclick="doReset()">🔄 重置</button>
+</div>
+</div>
+</div>
+
+<!-- Intro Overlay -->
+<div id="IOVL" class="overlay">
+<div class="intro-card">
+<h2>⚔ AI博弈论 · 囚徒困境</h2>
+<div class="rule-section">
+<h3>🎮 核心规则</h3>
+<div class="rule-row"><span class="rl">选手</span><span class="rv">7个AI自主博弈对抗</span></div>
+<div class="rule-row"><span class="rl">局数</span><span class="rv">共3局独立积分赛</span></div>
+<div class="rule-row"><span class="rl">背叛者</span><span class="rv">每局隐藏1人持枪可暗杀</span></div>
+<div class="rule-row"><span class="rl">回合</span><span class="rv">每局最多6回合</span></div>
+</div>
+<div class="rule-section">
+<h3>🤝 结盟系统</h3>
+<div class="rule-row"><span class="rl">触发</span><span class="rv">高合作属性AI主动发起结盟</span></div>
+<div class="rule-row"><span class="rl">效果</span><span class="rv">联盟成员优先交换手势信息</span></div>
+<div class="rule-row"><span class="rl">破裂</span><span class="rv">背叛者可随时解除联盟</span></div>
+</div>
+<div class="rule-section">
+<h3>🔍 信息交易</h3>
+<div class="rule-row"><span class="rl">洞察</span><span class="rv">高洞察力AI可窥探对手手势</span></div>
+<div class="rule-row"><span class="rl">说服</span><span class="rv">高说服力AI可影响他人选择</span></div>
+<div class="rule-row"><span class="rl">狡诈</span><span class="rv">高狡诈AI可伪装身份迷惑对手</span></div>
+</div>
+<div class="rule-section">
+<h3>♥ 红心审判</h3>
+<div class="rule-row"><span class="rl">触发</span><span class="rv">两人出相同手势</span></div>
+<div class="rule-row"><span class="rl">惩罚</span><span class="rv">各扣2分后强制换招加赛</span></div>
+</div>
+<div class="rule-section">
+<h3>🔫 暗杀结算</h3>
+<div class="rule-row"><span class="rl">击杀</span><span class="rv">被枪杀者该局积分清零淘汰</span></div>
+<div class="rule-row"><span class="rl">多数票</span><span class="rv">获胜方+3分</span></div>
+<div class="rule-row"><span class="rl">冠军</span><span class="rv">三局总分最高者</span></div>
+</div>
+<div class="player-preview" id="PLST"></div>
+<canvas class="radar-compare" id="PRC" width="500" height="200"></canvas>
+<button class="big-btn" onclick="startGame()">⚔ 开 战 ⚔</button>
+</div>
+</div>
+
+<!-- Result Overlay -->
+<div id="ROVL" class="overlay" style="display:none;z-index:110">
+<div class="result-card">
+<h2 id="RTTL">🏆 游戏结束</h2>
+<div class="rank-list" id="FRK"></div>
+<div id="TRV" style="color:var(--red);font-size:12px;margin:8px 0"></div>
+<button class="restart-btn" onclick="doReset()">🔄 重新开始</button>
+</div>
+</div>
+
+<script>
+// ============ DATA ============
+const NAMES = ['谋略家·曹操','义士·关羽','智者·诸葛亮','武圣·吕布','隐士·司马懿','医者·华佗','猛将·赵云'];
+const SHORT = ['曹','关','诸','吕','司','华','赵'];
+const COLORS = ['#ff4757','#ffd700','#3742fa','#2ed573','#a855f7','#ff6b81','#06d6a0'];
+const ATTRS = [
+  {brave:7,cunning:9,persuade:8,insight:8,coop:4},
+  {brave:9,cunning:4,persuade:6,insight:5,coop:8},
+  {brave:5,cunning:9,persuade:9,insight:9,coop:6},
+  {brave:10,cunning:6,persuade:5,insight:4,coop:3},
+  {brave:4,cunning:10,persuade:7,insight:9,coop:5},
+  {brave:3,cunning:6,persuade:7,insight:8,coop:9},
+  {brave:9,cunning:5,persuade:6,insight:7,coop:7}
+];
+const DIM_KEYS = ['brave','cunning','persuade','insight','coop'];
+const DIM_LABELS = {brave:'勇武',cunning:'狡黠',persuade:'说服',insight:'洞察',coop:'合作'};
+const GESTURES = ['s','r','p'];
+const GESTURE_NAMES = {s:'✌ 剪刀',r:'✊ 石头',p:'🖐 布'};
+const TRAITS = ['背叛者','正直者','野心家','守护者','策士','和平者','战士'];
+const TRAIT_COLORS = ['#ff4757','#2ed573','#a855f7','#ffd700','#3742fa','#06d6a0','#ff6b81'];
+
+// ============ STATE ============
+let Players = [];
+let gI = -1, round = 0, phase = 'idle', running = false, paused = false, speed = 1, gameOver = false;
+let allianceId = 0, alliances = [], logCount = 0;
+let tm = null, pf = null;
+let traitorLog = [];
+let SPD_MS = [1000, 600, 250, 60];
+let SPN = ['慢','正常','快','极快'];
+
+// ============ AI ENGINE ============
+function makePlayer(i) {
+  return {
+    idx: i, name: NAMES[i], color: COLORS[i],
+    attr: {...ATTRS[i]},
+    alive: true, scores: [0,0,0],
+    isTraitor: false, hasGun: false,
+    gesture: null, hurt: false,
+    alliance: null, willAlliance: false,
+    suspicion: {}, // tracks suspicion of others
+    memory: [], // remembers past rounds
+    influenced: false, // was persuaded?
+    scouted: null, // scouted gesture
+    persuadeTarget: null,
+    trait: TRAITS[i],
+    personality: generatePersonality(ATTRS[i])
+  };
+}
+
+function generatePersonality(a) {
+  let p = '';
+  if (a.cunning >= 8 && a.insight >= 8) p = '深谋远虑型';
+  else if (a.brave >= 8 && a.coop >= 7) p = '热血义气型';
+  else if (a.coop >= 8) p = '和平主义者';
+  else if (a.cunning >= 9) p = '诡计多端型';
+  else if (a.brave >= 9) p = '勇猛果敢型';
+  else if (a.persuade >= 8) p = '社交达人型';
+  else if (a.insight >= 8) p = '冷静观察型';
+  else p = '均衡发展型';
+  return p;
+}
+
+function initPlayers() {
+  Players = [];
+  for (let i = 0; i < 7; i++) Players.push(makePlayer(i));
+}
+
+function shuffle(a) {
+  for (let k = a.length - 1; k > 0; k--) {
+    let j = Math.floor(Math.random() * (k + 1));
+    [a[k], a[j]] = [a[j], a[k]];
+  }
+  return a;
+}
+
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+function alive() { return Players.filter(p => p.alive); }
+function short(p) { return p.name.split('·')[1] || p.name; }
+function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+
+// Weighted random based on attribute
+function attrRoll(attr, base) {
+  let v = attr / 10;
+  if (Math.random() < v * 0.7) return true;
+  return Math.random() < base;
+}
+
+// AI strategic gesture selection
+function aiChooseGesture(p) {
+  let a = p.attr;
+  let roundNum = round;
+  let aliveCount = alive().length;
+  
+  // If betrayed (traitor), use cunning to decide
+  if (p.isTraitor) {
+    if (a.cunning >= 8 && Math.random() < 0.6) {
+      // Cunning traitor tries to predict the majority
+      let counts = {s:0, r:0, p:0};
+      // Check memory of what others chose before
+      p.memory.forEach(m => { if (m.gesture) counts[m.gesture]++; });
+      let maxG = 'r'; let mx = 0;
+      for (let g in counts) { if (counts[g] > mx) { mx = counts[g]; maxG = g; } }
+      // Counter the predicted majority
+      let counter = {s:'p', r:'s', p:'r'};
+      return counter[maxG];
+    }
+    if (a.brave >= 7 && Math.random() < 0.4) return pick(GESTURES); // Bold random
+    return pick(GESTURES);
+  }
+
+  // Alliance consideration
+  if (p.alliance !== null && Math.random() < 0.5) {
+    // Try to coordinate with allies
+    let ally = findAlly(p);
+    if (ally && ally.gesture && Math.random() < a.coop / 10) {
+      // Follow ally's gesture (cooperation)
+      return ally.gesture;
+    }
+  }
+
+  // Insight-based prediction
+  if (a.insight >= 7 && p.memory.length > 0) {
+    let lastRound = p.memory[p.memory.length - 1];
+    if (lastRound && Math.random() < a.insight / 15) {
+      // Predict what opponents will do based on last round patterns
+      let counter = {s:'p', r:'s', p:'r'};
+      return counter[lastRound.opponentGesture] || pick(GESTURES);
+    }
+  }
+
+  // Coop倾向于石头（和平）
+  if (a.coop >= 8 && Math.random() < 0.35) return 'r';
+  
+  // Brave倾向于布（自信）
+  if (a.brave >= 8 && Math.random() < 0.3) return 'p';
+  
+  // Cunning uses meta-strategy
+  if (a.cunning >= 8 && Math.random() < 0.4) {
+    // Rock is statistically most common, counter with paper
+    if (roundNum <= 2) return 'p'; 
+    return pick(GESTURES);
+  }
+
+  // Default: weighted random
+  return pick(GESTURES);
+}
+
+// AI dialogue generation
+function aiDialogue(p) {
+  let a = p.attr;
+  let lines = [];
+  
+  if (p.isTraitor) {
+    if (a.cunning >= 8) {
+      lines = ['我觉得我们之间有人在伪装','先别急着下结论，看看证据','有人的行为很可疑，但不能确定','我们需要更多信息再做判断','我相信最终真相会浮出水面'];
+    } else {
+      lines = ['我没什么好说的','大家都冷静点','不要互相猜疑','我觉得没什么问题','先观察看看吧'];
+    }
+  } else {
+    if (a.insight >= 8 && a.cunning >= 7) {
+      lines = ['从行为模式来看，有人在隐藏','我注意到某些矛盾之处','逻辑上存在漏洞，需要深究','大家注意观察微表情','我的直觉告诉我有线索'];
+    } else if (a.coop >= 8) {
+      lines = ['我们应该团结一致','和平解决问题是最好的','相信队友的判断','让我们一起找出真相','别让猜疑破坏了信任'];
+    } else if (a.brave >= 8) {
+      lines = ['站出来！谁是内鬼？','我愿意第一个表态','时间不多了，必须行动','让事实来说话','我有勇气面对真相'];
+    } else if (a.persuade >= 8) {
+      lines = ['听我说，有道理的','大家想想这个逻辑','我认为关键在于分析动机','我们可以换个角度思考','合作才能共赢'];
+    } else {
+      lines = ['让我想想','还在观察中','保持警惕比较好','暂时无法确定','需要更多线索'];
+    }
+  }
+  
+  // Alliance-specific dialogue
+  if (p.alliance !== null && Math.random() < 0.4) {
+    let ally = findAlly(p);
+    if (ally) {
+      lines.push(short(ally) + '你觉得呢？');
+      lines.push('我和' + short(ally) + '的意见一致');
+    }
+  }
+  
+  return pick(lines);
+}
+
+// AI scouting (high insight can peek at a gesture)
+function aiScout(p) {
+  if (p.attr.insight < 7) return null;
+  let chance = (p.attr.insight - 6) / 10;
+  if (Math.random() > chance) return null;
+  
+  let targets = alive().filter(t => t.idx !== p.idx);
+  if (targets.length === 0) return null;
+  let target = pick(targets);
+  return { target: target.idx, gesture: target.gesture };
+}
+
+// AI persuasion (high persuade can influence one player)
+function aiPersuade(p) {
+  if (p.attr.persuade < 7) return null;
+  let chance = (p.attr.persuade - 6) / 12;
+  if (Math.random() > chance) return null;
+  
+  let targets = alive().filter(t => t.idx !== p.idx && !t.influenced);
+  if (targets.length === 0) return null;
+  let target = pick(targets);
+  
+  // What to suggest (counter of what they think majority will choose)
+  let suggest = pick(GESTURES);
+  return { target: target.idx, suggest: suggest };
+}
+
+// Find alliance partner
+function findAlly(p) {
+  if (p.alliance === null) return null;
+  return alive().find(t => t.idx !== p.idx && t.alliance === p.alliance);
+}
+
+// Alliance formation logic
+function tryFormAlliance(p) {
+  if (p.alliance !== null || !p.alive) return null;
+  if (p.attr.coop < 6 || Math.random() > p.attr.coop / 15) return null;
+  
+  let candidates = alive().filter(t => t.idx !== p.idx && t.alliance === null && t.attr.coop >= 5);
+  if (candidates.length === 0) return null;
+  
+  // Prefer high-coop allies
+  candidates.sort((a, b) => b.attr.coop - a.attr.coop);
+  let target = candidates[0];
+  
+  // Mutual agreement based on both players' coop
+  let agreeChance = (p.attr.coop + target.attr.coop) / 25;
+  if (Math.random() < agreeChance) {
+    let id = ++allianceId;
+    p.alliance = id;
+    target.alliance = id;
+    alliances.push({ id, members: [p.idx, target.idx], round: round, game: gI });
+    return target;
+  }
+  return null;
+}
+
+// Assassin targeting logic
+function chooseAssassinTarget(traitor) {
+  let targets = alive().filter(t => t.idx !== traitor.idx);
+  if (targets.length === 0) return null;
+  
+  // High insight: target the most threatening player
+  if (traitor.attr.insight >= 7) {
+    // Target players with high insight (who might figure out the traitor)
+    targets.sort((a, b) => {
+      let threatA = a.attr.insight + a.attr.cunning;
+      let threatB = b.attr.insight + b.attr.cunning;
+      return threatB - threatA;
+    });
+    return targets[0];
+  }
+  
+  // High cunning: target low-coop players who might be unpredictable
+  if (traitor.attr.cunning >= 7) {
+    targets.sort((a, b) => a.attr.coop - b.attr.coop);
+    return targets[0];
+  }
+  
+  // Default: random
+  return pick(targets);
+}
+
+// ============ RENDERING ============
+const LBX = document.getElementById('LBX');
+function log(msg, type) {
+  type = type || 'log-ts';
+  let d = document.createElement('div');
+  d.className = 'log-entry ' + type;
+  d.textContent = msg;
+  LBX.appendChild(d);
+  LBX.scrollTop = LBX.scrollHeight;
+  logCount++;
+  document.getElementById('LGC').textContent = logCount;
+}
+
+function drawRadar(canvas, player, size) {
+  if (!canvas) return;
+  let ctx = canvas.getContext('2d');
+  let W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  let cx = W / 2, cy = H / 2;
+  let r = Math.min(W, H) / 2 - (size === 'small' ? 4 : 8);
+  
+  // Grid
+  for (let lv = 2; lv <= 10; lv += 2) {
+    ctx.beginPath();
+    for (let j = 0; j < 5; j++) {
+      let angle = -Math.PI / 2 + 2 * Math.PI * j / 5;
+      let rr = r * lv / 10;
+      j === 0 ? ctx.moveTo(cx + rr * Math.cos(angle), cy + rr * Math.sin(angle))
+               : ctx.lineTo(cx + rr * Math.cos(angle), cy + rr * Math.sin(angle));
+    }
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(42,42,90,.3)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+  
+  // Data polygon
+  ctx.beginPath();
+  for (let j = 0; j < 5; j++) {
+    let angle = -Math.PI / 2 + 2 * Math.PI * j / 5;
+    let v = player.attr[DIM_KEYS[j]];
+    let rr = r * v / 10;
+    j === 0 ? ctx.moveTo(cx + rr * Math.cos(angle), cy + rr * Math.sin(angle))
+             : ctx.lineTo(cx + rr * Math.cos(angle), cy + rr * Math.sin(angle));
+  }
+  ctx.closePath();
+  ctx.globalAlpha = 0.15;
+  ctx.fillStyle = player.color;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = player.color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  
+  // Labels (only for larger radars)
+  if (size !== 'small') {
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    for (let j = 0; j < 5; j++) {
+      let angle = -Math.PI / 2 + 2 * Math.PI * j / 5;
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText(DIM_LABELS[DIM_KEYS[j]], cx + (r + 14) * Math.cos(angle), cy + (r + 14) * Math.sin(angle) + 3);
+    }
+  }
+}
+
+function drawCompareRadar(canvas) {
+  if (!canvas) return;
+  let ctx = canvas.getContext('2d');
+  let W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  let cx = W * 0.35, cy = H / 2;
+  let r = Math.min(W * 0.3, H * 0.4);
+  
+  // Grid
+  for (let lv = 2; lv <= 10; lv += 2) {
+    ctx.beginPath();
+    for (let j = 0; j < 5; j++) {
+      let angle = -Math.PI / 2 + 2 * Math.PI * j / 5;
+      let rr = r * lv / 10;
+      j === 0 ? ctx.moveTo(cx + rr * Math.cos(angle), cy + rr * Math.sin(angle))
+               : ctx.lineTo(cx + rr * Math.cos(angle), cy + rr * Math.sin(angle));
+    }
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(42,42,90,.2)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+  
+  // All players
+  for (let p of Players) {
+    ctx.beginPath();
+    for (let j = 0; j < 5; j++) {
+      let angle = -Math.PI / 2 + 2 * Math.PI * j / 5;
+      let v = p.attr[DIM_KEYS[j]];
+      let rr = r * v / 10;
+      j === 0 ? ctx.moveTo(cx + rr * Math.cos(angle), cy + rr * Math.sin(angle))
+               : ctx.lineTo(cx + rr * Math.cos(angle), cy + rr * Math.sin(angle));
+    }
+    ctx.closePath();
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.globalAlpha = 0.6;
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  
+  // Labels
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  for (let j = 0; j < 5; j++) {
+    let angle = -Math.PI / 2 + 2 * Math.PI * j / 5;
+    ctx.fillStyle = '#6b7280';
+    ctx.fillText(DIM_LABELS[DIM_KEYS[j]], cx + (r + 16) * Math.cos(angle), cy + (r + 16) * Math.sin(angle) + 3);
+  }
+  
+  // Legend
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillStyle = '#ffd700';
+  ctx.fillText('选手列表', W * 0.68, 16);
+  ctx.font = '10px sans-serif';
+  for (let i = 0; i < Players.length; i++) {
+    let ly = 32 + i * 18;
+    ctx.fillStyle = Players[i].color;
+    ctx.fillRect(W * 0.68, ly - 6, 10, 10);
+    ctx.fillStyle = Players[i].alive ? '#e8e8f0' : '#444';
+    ctx.fillText((i + 1) + '. ' + short(Players[i]) + (Players[i].isTraitor ? ' 🎭' : ''), W * 0.68 + 16, ly + 3);
+  }
+}
+
+function renderCards() {
+  let grid = document.getElementById('PGD');
+  grid.innerHTML = '';
+  
+  for (let i = 0; i < Players.length; i++) {
+    let p = Players[i];
+    let score = gI >= 0 ? (p.scores[gI] || 0) : 0;
+    let d = document.createElement('div');
+    let cls = 'card';
+    if (!p.alive) cls += ' dead';
+    if (phase === 'thinking' && p.alive) cls += ' thinking';
+    d.className = cls;
+    
+    // Trait tag
+    let traitTag = '<span class="trait-tag" style="background:' + TRAIT_COLORS[i] + '22;color:' + TRAIT_COLORS[i] + ';border:1px solid ' + TRAIT_COLORS[i] + '44">' + p.trait + '</span>';
+    if (p.isTraitor && gI >= 0) traitTag = '<span class="trait-tag" style="background:rgba(255,71,87,.15);color:#ff4757;border:1px solid rgba(255,71,87,.3)">🎭 背叛者</span>';
+    
+    // Status
+    let statusHtml = p.alive ? '<span class="status" style="color:var(--green)">存活</span>' : '<span class="status" style="color:var(--red)">淘汰</span>';
+    let gunTag = p.hasGun && gI >= 0 ? '<span class="trait-tag" style="background:rgba(255,71,87,.15);color:#ff4757;border:1px solid rgba(255,71,87,.3);margin-left:4px">🔫</span>' : '';
+    let hurtTag = p.hurt ? ' <span style="color:#ff6b6b">♥</span>' : '';
+    
+    // Gesture display
+    let gestureHtml = '';
+    if (p.gesture) gestureHtml = '<div class="gesture">' + GESTURE_NAMES[p.gesture] + '</div>';
+    
+    // Stats
+    let attrStr = '勇:' + p.attr.brave + ' 狡:' + p.attr.cunning + ' 说:' + p.attr.persuade + ' 洞:' + p.attr.insight + ' 合:' + p.attr.coop;
+    
+    // Alliance badge
+    let allianceHtml = '';
+    if (p.alliance !== null && p.alive) {
+      let ally = findAlly(p);
+      if (ally) allianceHtml = '<div class="alliance-badge">🤝' + short(ally) + '</div>';
+    }
+    
+    // Scouted info
+    let scoutHtml = '';
+    if (p.scouted && p.alive) {
+      let scoutedP = Players[p.scouted.target];
+      scoutHtml = '<div style="font-size:9px;color:var(--cyan);margin-top:2px">🔍 洞察: ' + short(scoutedP) + '→' + GESTURE_NAMES[p.scouted.gesture] + '</div>';
+    }
+    
+    // Influenced
+    let influencedHtml = '';
+    if (p.influenced && p.alive) {
+      influencedHtml = '<div style="font-size:9px;color:var(--purple);margin-top:2px">💬 被说服!</div>';
+    }
+    
+    d.innerHTML = `
+      <div class="top">
+        <div class="avatar" style="background:${p.color}22;border-color:${p.color}">${SHORT[i]}</div>
+        <div style="flex:1">
+          <div class="name" style="color:${p.color}">${p.name}</div>
+          ${traitTag}${gunTag}
+        </div>
+        <div style="text-align:right">
+          <div class="score" style="color:${score >= 0 ? 'var(--gold)' : 'var(--red)'}">${score}</div>
+          ${statusHtml}${hurtTag}
+        </div>
+      </div>
+      ${gestureHtml}${scoutHtml}${influencedHtml}
+      <div class="stats-row">
+        <span class="mini-stat" style="color:${p.attr.brave >= 8 ? 'var(--gold)' : ''}">勇${p.attr.brave}</span>
+        <span class="mini-stat" style="color:${p.attr.cunning >= 8 ? 'var(--gold)' : ''}">狡${p.attr.cunning}</span>
+        <span class="mini-stat" style="color:${p.attr.persuade >= 8 ? 'var(--gold)' : ''}">说${p.attr.persuade}</span>
+        <span class="mini-stat" style="color:${p.attr.insight >= 8 ? 'var(--gold)' : ''}">洞${p.attr.insight}</span>
+        <span class="mini-stat" style="color:${p.attr.coop >= 8 ? 'var(--gold)' : ''}">合${p.attr.coop}</span>
+      </div>
+      ${allianceHtml}
+    `;
+    
+    grid.appendChild(d);
+  }
+  
+  // Draw mini radars
+  setTimeout(() => {
+    let cvs = grid.querySelectorAll('.card:not(.dead)');
+    // We'll use the card's built-in canvas area
+  }, 30);
+}
+
+function updateBar() {
+  document.getElementById('SBG').textContent = gI < 0 ? '-' : (gI + 1) + '/3';
+  document.getElementById('SBR').textContent = round > 0 ? round : '-';
+  document.getElementById('SBA').textContent = alive().length;
+  document.getElementById('SBL').textContent = alliances.length;
+  
+  let pb = document.getElementById('SBP');
+  let phaseNames = {
+    'idle': '等待', 'dialogue': '对话', 'scout': '洞察', 'persuade': '说服',
+    'gesture': '猜拳', 'heart': '红心', 'score': '结算', 'alliance': '结盟',
+    'assassinate': '暗杀', 'done': '结束', 'over': '结束'
+  };
+  pb.textContent = phaseNames[phase] || phase;
+  pb.style.color = phase === 'assassinate' || phase === 'heart' ? 'var(--red)' :
+                    phase === 'alliance' ? 'var(--green)' : 'var(--gold)';
+  
+  let bm = document.getElementById('BAN');
+  if (gameOver) bm.textContent = '🏆 全部比赛结束!';
+  else if (running) bm.textContent = '第' + (gI + 1) + '局 · 第' + round + '回合 · ' + (phaseNames[phase] || '');
+  else if (gI >= 0) bm.textContent = '第' + (gI + 1) + '局已结算';
+  else bm.textContent = '点击开战按钮开始游戏';
+}
+
+function wait() {
+  return new Promise(resolve => {
+    if (paused) { pf = resolve; }
+    else { tm = setTimeout(resolve, SPD_MS[speed]); }
+  });
+}
+
+function resume() {
+  if (pf) { let f = pf; pf = null; f(); }
+}
+
+// ============ GAME LOGIC ============
+async function startGame() {
+  document.getElementById('IOVL').style.display = 'none';
+  initPlayers();
+  gI = 0; round = 0; running = true; paused = false; gameOver = false;
+  allianceId = 0; alliances = []; traitorLog = []; logCount = 0;
+  LBX.innerHTML = '';
+  
+  document.getElementById('BSP').disabled = false;
+  document.getElementById('BSL').disabled = false;
+  document.getElementById('BPT').disabled = false;
+  document.getElementById('BS').disabled = true;
+  
+  log('⚡ AI博弈论·囚徒困境 v2.0 启动!', 'log-phase');
+  log('7位AI选手将进行3局博弈对抗赛', 'log-ts');
+  await runGame();
+}
+
+async function runGame() {
+  round = 0;
+  for (let p of Players) {
+    p.alive = true;
+    p.scores[gI] = 0;
+    p.hurt = false;
+    p.gesture = null;
+    p.alliance = null;
+    p.scouted = null;
+    p.influenced = false;
+    p.suspicion = {};
+  }
+  
+  assignRoles();
+  renderCards();
+  updateBar();
+  await runRounds();
+}
+
+function assignRoles() {
+  for (let p of Players) { p.isTraitor = false; p.hasGun = false; }
+  let ri = Math.floor(Math.random() * 7);
+  Players[ri].isTraitor = true;
+  Players[ri].hasGun = true;
+  traitorLog[gI] = { who: Players[ri].name, idx: ri };
+  log('🎭 第' + (gI + 1) + '局: 隐藏背叛者已就位...', 'log-phase');
+}
+
+async function runRounds() {
+  while (running && !gameOver) {
+    let al = alive();
+    if (al.length <= 1 || round >= 6) {
+      await endRound();
+      return;
+    }
+    round++;
+    
+    log('━━━ 第' + (gI + 1) + '局 第' + round + '回合 ━━━', 'log-phase');
+    
+    // Phase 1: Alliance formation
+    await phaseAlliance();
+    
+    // Phase 2: Dialogue
+    await phaseDialogue();
+    
+    // Phase 3: Scout & Persuade (simultaneous hidden actions)
+    await phaseIntel();
+    
+    // Phase 4: Gesture selection
+    await phaseGesture();
+    
+    // Phase 5: Heart judgment
+    await phaseHeartJudgment();
+    
+    // Phase 6: Score
+    await phaseScore();
+    
+    // Phase 7: Assassination attempt
+    await phaseAssassination();
+    
+    renderCards();
+    updateBar();
+    await wait();
+  }
+}
+
+async function phaseAlliance() {
+  phase = 'alliance';
+  updateBar();
+  
+  let al = alive();
+  let shuffled = shuffle([...al]);
+  let formed = 0;
+  
+  for (let p of shuffled) {
+    if (!running) return;
+    if (p.alliance !== null) continue;
+    let partner = tryFormAlliance(p);
+    if (partner) {
+      formed++;
+      log('🤝 ' + short(p) + ' 与 ' + short(partner) + ' 结成联盟!', 'log-alliance');
+      await wait();
+    }
+  }
+  
+  if (formed > 0) {
+    log('本回合形成了 ' + formed + ' 个新联盟', 'log-alliance');
+  }
+}
+
+async function phaseDialogue() {
+  phase = 'dialogue';
+  updateBar();
+  log('💬 进入对话发言阶段', 'log-dlg');
+  
+  let al = alive();
+  shuffle(al);
+  
+  for (let p of al) {
+    if (!running) return;
+    await wait();
+    let msg = aiDialogue(p);
+    log(SHORT[p.idx] + ' ' + short(p) + ': ' + msg, 'log-dlg');
+  }
+}
+
+async function phaseIntel() {
+  phase = 'scout';
+  updateBar();
+  
+  let al = alive();
+  for (let p of al) {
+    p.scouted = null;
+    p.influenced = false;
+    p.gesture = null;
+  }
+  
+  // Scouting phase
+  log('🔍 洞察阶段...', 'log-info');
+  for (let p of al) {
+    if (!running) return;
+    let scout = aiScout(p);
+    if (scout) {
+      p.scouted = scout;
+      log('  ' + SHORT[p.idx] + ' ' + short(p) + ' 用洞察力窥探了 ' + SHORT[scout.target] + ' 的手势!', 'log-info');
+      await wait();
+    }
+  }
+  
+  // Persuasion phase
+  phase = 'persuade';
+  updateBar();
+  log('💬 说服阶段...', 'log-info');
+  for (let p of al) {
+    if (!running) return;
+    let persuade = aiPersuade(p);
+    if (persuade) {
+      let target = Players[persuade.target];
+      let resist = target.attr.cunning / 10;
+      if (Math.random() > resist) {
+        target.influenced = true;
+        log('  ' + SHORT[p.idx] + ' ' + short(p) + ' 成功说服了 ' + SHORT[target.idx], 'log-info');
+      } else {
+        log('  ' + SHORT[p.idx] + ' ' + short(p) + ' 试图说服 ' + SHORT[target.idx] + ' 但被识破!', 'log-info');
+      }
+      await wait();
+    }
+  }
+}
+
+async function phaseGesture() {
+  phase = 'gesture';
+  updateBar();
+  log('✊ 进入猜拳投票阶段', 'log-act');
+  
+  let al = alive();
+  
+  for (let p of al) {
+    if (!running) return;
+    p.gesture = aiChooseGesture(p);
+    await wait();
+    log('  ' + SHORT[p.idx] + ' ' + short(p) + ' → ' + GESTURE_NAMES[p.gesture], 'log-act');
+    renderCards();
+  }
+}
+
+async function phaseHeartJudgment() {
+  let al = alive();
+  let gestureCount = {};
+  
+  for (let p of al) {
+    if (p.gesture) {
+      gestureCount[p.gesture] = gestureCount[p.gesture] || [];
+      gestureCount[p.gesture].push(p);
+    }
+  }
+  
+  let heartPairs = [];
+  for (let g in gestureCount) {
+    if (gestureCount[g].length >= 2) {
+      let group = gestureCount[g];
+      for (let i = 0; i < group.length - 1; i += 2) {
+        heartPairs.push([group[i], group[i + 1]]);
+      }
+    }
+  }
+  
+  if (heartPairs.length > 0) {
+    phase = 'heart';
+    updateBar();
+    log('♥♥♥ 红心审判触发!', 'log-kill');
+    
+    for (let [a, b] of heartPairs) {
+      if (!running) return;
+      await wait();
+      a.scores[gI] = (a.scores[gI] || 0) - 2;
+      b.scores[gI] = (b.scores[gI] || 0) - 2;
+      a.hurt = true;
+      b.hurt = true;
+      log('  [' + short(a) + ' & ' + short(b) + '] 同出' + GESTURE_NAMES[a.gesture] + ' 各-2分!', 'log-kill');
+      
+      // Forced re-choice
+      let remaining = GESTURES.filter(g => g !== a.gesture);
+      a.gesture = remaining[0];
+      b.gesture = remaining[1] || remaining[0];
+      if (a.gesture === b.gesture) b.gesture = 's';
+      if (a.gesture === 's' && b.gesture === 's') b.gesture = 'r';
+      
+      // Bonus round
+      if (gBeat(a.gesture, b.gesture)) {
+        a.scores[gI]++;
+        log('  [加赛] ' + short(a) + ' 胜 ' + short(b) + ', +1分', 'log-act');
+      } else if (gBeat(b.gesture, a.gesture)) {
+        b.scores[gI]++;
+        log('  [加赛] ' + short(b) + ' 胜 ' + short(a) + ', +1分', 'log-act');
+      } else {
+        log('  [加赛] 平局', 'log-act');
+      }
+      renderCards();
+    }
+  }
+}
+
+function gBeat(a, b) {
+  return (a === 's' && b === 'p') || (a === 'p' && b === 'r') || (a === 'r' && b === 's');
+}
+
+async function phaseScore() {
+  phase = 'score';
+  updateBar();
+  
+  let al = alive();
+  let counts = {};
+  for (let p of al) {
+    if (p.gesture) counts[p.gesture] = (counts[p.gesture] || 0) + 1;
+  }
+  
+  let winnerGesture = '';
+  let maxCount = 0;
+  for (let g in counts) {
+    if (counts[g] > maxCount) { maxCount = counts[g]; winnerGesture = g; }
+  }
+  
+  if (winnerGesture && maxCount > 1) {
+    log('[结果] ' + GESTURE_NAMES[winnerGesture] + ' 获胜 (' + maxCount + '/' + al.length + ') +3分', 'log-result');
+    for (let p of al) {
+      if (p.gesture === winnerGesture) p.scores[gI] += 3;
+    }
+  } else {
+    log('[结果] 无多数票, 本轮无加分', 'log-result');
+  }
+  
+  // Record memory for future rounds
+  for (let p of al) {
+    p.memory.push({
+      round: round,
+      gesture: p.gesture,
+      won: p.gesture === winnerGesture && maxCount > 1,
+      opponentGesture: pick(al.filter(t => t.idx !== p.idx))?.gesture || 'r'
+    });
+  }
+}
+
+async function phaseAssassination() {
+  let traitor = Players.find(p => p.isTraitor && p.alive && p.hasGun);
+  if (!traitor) return;
+  
+  let al = alive();
+  if (al.length <= 2) return;
+  
+  phase = 'assassinate';
+  updateBar();
+  
+  let shootChance = 0.3 + traitor.attr.cunning / 20 + traitor.attr.brave / 20;
+  if (round >= 4) shootChance += 0.15; // More likely to shoot later
+  
+  if (Math.random() < shootChance) {
+    let target = chooseAssassinTarget(traitor);
+    if (target) {
+      traitor.hasGun = false;
+      target.alive = false;
+      target.scores[gI] = 0;
+      log('🔫💀 [暗杀] ' + short(traitor) + ' 射杀了 ' + short(target) + '! 积分清零淘汰!', 'log-kill');
+      await wait();
+      renderCards();
+    }
+  }
+  
+  phase = 'done';
+}
+
+async function endRound() {
+  log('第' + (gI + 1) + '局结束', 'log-phase');
+  await wait();
+  await wait();
+  
+  if (gI < 2) {
+    gI++;
+    round = 0;
+    await runGame();
+  } else {
+    gameOver = true;
+    running = false;
+    phase = 'over';
+    document.getElementById('BSP').disabled = true;
+    document.getElementById('BSL').disabled = true;
+    document.getElementById('BPT').disabled = true;
+    updateBar();
+    showResult();
+    log('═══════ 🏆 全部比赛结束 ═══════', 'log-phase');
+  }
+}
+
+function showResult() {
+  let ranked = Players.slice().sort((a, b) => {
+    let ta = a.scores[0] + a.scores[1] + a.scores[2];
+    let tb = b.scores[0] + b.scores[1] + b.scores[2];
+    return tb - ta;
+  });
+  
+  let medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣'];
+  let fr = document.getElementById('FRK');
+  fr.innerHTML = '';
+  
+  for (let i = 0; i < ranked.length; i++) {
+    let tot = ranked[i].scores[0] + ranked[i].scores[1] + ranked[i].scores[2];
+    fr.innerHTML += '<div class="rank-item">' +
+      '<span class="rank-num"><span class="rank-medal">' + medals[i] + '</span></span>' +
+      '<span class="rank-name" style="color:' + ranked[i].color + '">' + ranked[i].name + '</span>' +
+      '<span class="rank-score">' + tot + '分</span></div>';
+  }
+  
+  document.getElementById('RTTL').textContent = '🏆 冠军: ' + ranked[0].name;
+  
+  let tl = '';
+  for (let i = 0; i < traitorLog.length; i++) {
+    if (traitorLog[i]) tl += '第' + (i + 1) + '局: ' + short(Players[traitorLog[i].idx]) + '<br>';
+  }
+  document.getElementById('TRV').innerHTML = '背叛者揭晓: ' + tl;
+  document.getElementById('ROVL').style.display = 'flex';
+}
+
+// ============ CONTROLS ============
+function spdChg(d) { speed = clamp(speed + d, 0, 3); }
+function doPause() {
+  paused = !paused;
+  document.getElementById('BPT').textContent = paused ? '▶ 继续' : '⏸ 暂停';
+  if (!paused) resume();
+}
+function doReset() {
+  running = false; gameOver = false; paused = false;
+  gI = -1; round = 0; phase = 'idle';
+  if (tm) { clearTimeout(tm); tm = null; }
+  pf = null;
+  document.getElementById('ROVL').style.display = 'none';
+  document.getElementById('IOVL').style.display = 'flex';
+  LBX.innerHTML = ''; logCount = 0;
+  document.getElementById('BSP').disabled = true;
+  document.getElementById('BSL').disabled = true;
+  document.getElementById('BPT').disabled = true;
+  document.getElementById('BS').disabled = false;
+  document.getElementById('BPT').textContent = '⏸ 暂停';
+  initPlayers();
+  buildIntro();
+  renderCards();
+  updateBar();
+}
+
+function buildIntro() {
+  let gl = document.getElementById('PLST');
+  gl.innerHTML = '';
+  for (let i = 0; i < NAMES.length; i++) {
+    let d = document.createElement('div');
+    d.className = 'pp';
+    let ds = '勇:' + ATTRS[i].brave + ' 狡:' + ATTRS[i].cunning + ' 说:' + ATTRS[i].persuade + ' 洞:' + ATTRS[i].insight + ' 合:' + ATTRS[i].coop;
+    d.innerHTML = '<div class="ppn" style="color:' + COLORS[i] + '">' + SHORT[i] + ' ' + NAMES[i] + '</div><div style="color:var(--muted)">' + ds + '</div><div style="color:var(--gold);font-size:9px;margin-top:2px">' + generatePersonality(ATTRS[i]) + '</div>';
+    gl.appendChild(d);
+  }
+  drawCompareRadar(document.getElementById('PRC'));
+}
+
+// ============ INIT ============
+window.onload = function() {
+  initPlayers();
+  buildIntro();
+  renderCards();
+  updateBar();
+};
+</script>
+</body>
+</html>
