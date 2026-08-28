@@ -207,6 +207,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 <div class="rsec">
 <h3>🎯 项圈系统</h3>
 <div class="rrow"><span class="rl">普通人</span><span class="rv">能看到别人的项圈，<b>看不到自己的</b></span></div>
+<div class="rrow"><span class="rl">每轮重置</span><span class="rv">每轮开始<b>重新分配</b>项圈颜色</span></div>
 <div class="rrow"><span class="rl">内鬼</span><span class="rv">能看到<b>所有人的</b>项圈（含自己的）</span></div>
 </div>
 <div class="rsec">
@@ -282,8 +283,17 @@ let roundDeaths=[]; // [{idx,name,order}]
 let allScores=[]; // cumulative scores across3 games
 let bubbles=[]; // active speech bubbles
 
-function mkP(i){return{...PD[i],idx:i,alive:true,ch:2,mo:false,sc:0,cc:CC[i],cn:CN[i],msg:'',lastBubble:'',knownColors:[],heardFrom:[]}}
+function mkP(i){return{...PD[i],idx:i,alive:true,ch:3,mo:false,sc:0,cc:CC[i],cn:CN[i],msg:'',lastBubble:'',knownColors:[],heardFrom:[]}}
 function initS(){S=[];for(let i=0;i<7;i++)S.push(mkP(i))}
+function resetCollars(){
+  let alivePlayers=alv();
+  let shuffledColors=shuf([...CC]);
+  let shuffledNames=shuf([...CN]);
+  for(let i=0;i<alivePlayers.length;i++){
+    alivePlayers[i].cc=shuffledColors[i];
+    alivePlayers[i].cn=shuffledNames[i];
+  }
+}
 function shuf(a){for(let k=a.length-1;k>0;k--){let j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]]}return a}
 function pk(a){return a[Math.floor(Math.random()*a.length)]}
 function alv(){return S.filter(p=>p.alive)}
@@ -499,6 +509,7 @@ async function startGame(){
 
   log('⚡ AI博弈论 · 囚徒困境 启动! 共'+totalGames+'局','l-sys');
   log('【裁判视角】内鬼: '+S[moIdx].name,'l-kill');
+  resetCollars();
   for(let p of S)log('项圈: '+p.short+' → '+p.cn+'色','l-vote');
 
   updateUI();
@@ -510,10 +521,12 @@ async function gameLoop(){
     roundNum++;
     deathOrder=0;roundDeaths=[];
     for(let p of alv())p.ch=3;
-    for(let p of S)p.msg='';
+    for(let p of S){p.msg='';p.knownColors=[];p.heardFrom=[]}
+    // Reset collar colors each round
+    resetCollars();
 
     log('═══════════════════','l-sys');
-    log('第'+gameNum+'局 第'+roundNum+'轮 · 存活'+alvn()+'人','l-sys');
+    log('第'+gameNum+'局 第'+roundNum+'轮 · 存活'+alvn()+'人 · 项圈已重置','l-sys');
 
     if(alvn()===3&&!isUlt){isUlt=true;log('🔥🔥🔥 终极对决! 猜对+1分 猜错死不扣分','l-ult')}
 
