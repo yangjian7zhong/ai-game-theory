@@ -743,7 +743,7 @@ async function trialPhase(){
   
   log('♥ '+caller.short+' 指控 '+accused.short+' 是内鬼!','l-kill');
   
-  // Step2: Other players vote to follow or not
+  // Step2: Everyone (including accused) votes to follow or not
   let followVotes=0,followers=[];
   let nonFollowers=[];
   for(let p of alv()){
@@ -752,18 +752,20 @@ async function trialPhase(){
     await wait();
     
     let willFollow=false;
-    if(p.mo){
+    if(p.idx===accused.idx){
+      // Accused: always vote against (defend self)
+      willFollow=false;
+      log('🛡 '+accused.short+'[被指控] 自辩: 我不是内鬼!','l-vote');
+    } else if(p.mo){
       // Mole: follow if accused is NOT the mole (to blend in)
-      // Don't follow if accused IS the mole (would expose self)
       willFollow=!accused.mo&&Math.random()<0.6;
     } else {
       // Good player: follow if they suspect the accused
       let data=PD[p.idx];
-      let susChance=0.3;
+      let susChance=0.35;
       if(data.in>80)susChance+=0.2;
-      if(data.g>75)susChance+=0.1;
-      // If multiple people already followed, more likely to follow (bandwagon)
-      if(followVotes>=2)susChance+=0.2;
+      if(data.g>75)susChance+=0.15;
+      if(followVotes>=2)susChance+=0.25;
       willFollow=Math.random()<susChance;
     }
     
@@ -814,7 +816,20 @@ async function trialPhase(){
         log('☠️ '+v.short+' 死亡','l-kill');
       }
     }
+    // Assign death points
+    for(let rd of roundDeaths){
+      let pts=rd.order===1?0:rd.order===2?1:rd.order<=5?2:0;
+      S[rd.idx].sc+=pts;
+      log('📊 '+rd.name+' 第'+rd.order+'死 → +'+pts+'分','l-vote');
+    }
+    let survivors=alv();
+    if(survivors.length>0){
+      for(let s of survivors){s.sc+=3;log('📊 '+s.short+' 存活 → +3分','l-win')}
+    }
+    ndStreak=0;
+    log('审判失败 · '+roundDeaths.length+'人死亡 · 游戏继续','l-sys');
     updateUI();
+    // Don't endRound! Game continues with survivors
   }
 }
 
