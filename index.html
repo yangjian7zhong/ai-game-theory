@@ -212,7 +212,9 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 </div>
 <div class="rsec">
 <h3>💬 对话</h3>
-<div class="rrow"><span class="rl">每轮</span><span class="rv">每人3次机会</span></div>
+<div class="rrow"><span class="rl">好人</span><span class="rv">每人每轮3次机会</span></div>
+<div class="rrow"><span class="rl">内鬼</span><span class="rv">每人每轮2次机会</span></div>
+<div class="rrow"><span class="rl">剩余次数</span><span class="rv"><b>不显示</b>给其他人看</span></div>
 <div class="rrow"><span class="rl">私聊</span><span class="rv">消耗1次 · 头上显示对话气泡</span></div>
 <div class="rrow"><span class="rl">公开</span><span class="rv">消耗2次 · 显示喇叭图标</span></div>
 </div>
@@ -220,7 +222,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 <h3>♥ 红心审判（每轮可发动）</h3>
 <div class="rrow"><span class="rl">发动</span><span class="rv">每轮可发动1次</span></div>
 <div class="rrow"><span class="rl">投票</span><span class="rv">需要半数及以上通过</span></div>
-<div class="rrow"><span class="rl">猜对</span><span class="rv">内鬼被揪出，好人胜利!</span></div>
+<div class="rrow"><span class="rl">猜对</span><span class="rv">内鬼被揪出，好人胜利!<br>指控者+跟票者各<b style="color:var(--gold)">+3分</b></span></div>
 <div class="rrow"><span class="rl">猜错</span><span class="rv"><b style="color:var(--red)">参与投票的人全部死亡</b></span></div>
 </div>
 <div class="rsec">
@@ -356,7 +358,6 @@ function layoutSeats(){
       '<div class="seat-name" style="color:'+p.color+'">'+p.name+'</div>'+
       '<div class="seat-collar"><div class="seat-collar-dot" style="background:'+p.cc+'"></div>'+p.cn+'色项圈</div>'+
       '<div class="seat-score">⭐ '+p.sc+'分</div>'+
-      (p.alive?'<div class="seat-chance">💬 '+p.ch+'/3</div>':'')+
       (p.msg&&!p.alive?'':'');
 
     d.style.left=(x-65)+'px';
@@ -520,7 +521,7 @@ async function gameLoop(){
   while(running&&!gameOver){
     roundNum++;
     deathOrder=0;roundDeaths=[];
-    for(let p of alv())p.ch=3;
+    for(let p of alv())p.ch=p.mo?2:3;
     for(let p of S){p.msg='';p.knownColors=[];p.heardFrom=[]}
     // Reset collar colors each round
     resetCollars();
@@ -791,6 +792,9 @@ async function trialPhase(){
   if(accused.mo){
     log('🎉🎉🎉 猜对了! '+accused.short+' 就是内鬼!','l-win');
     accused.alive=false;
+    caller.sc+=3;
+    log('🏆 '+caller.short+' 猜出内鬼! +3分!','l-win');
+    for(let v of followers){v.sc+=3;log('🏆 '+v.short+' 跟票成功! +3分!','l-win')}
     updateUI();
     endRound('good');
   } else {
